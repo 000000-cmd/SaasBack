@@ -1,0 +1,261 @@
+services:
+
+  # ===========================================
+  # BASE DE DATOS MYSQL
+  # ===========================================
+  mysql:
+    image: mysql:8.4
+    container_name: saas-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: saas_db
+      TZ: America/Bogota
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=150
+      --innodb_buffer_pool_size=512M
+    networks:
+      - saas-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+
+  # ===========================================
+  # CONFIG SERVER
+  # ===========================================
+  config-server:
+    build:
+      context: .
+      dockerfile: config-server/Dockerfile
+    container_name: saas-config-server
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: native
+      SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config
+      JAVA_OPTS: >
+        -Xms128m -Xmx256m
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=200
+        -XX:+UseContainerSupport
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./saas-config-repo:/config:ro
+    networks:
+      - saas-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.3'
+        reservations:
+          memory: 256M
+
+  # ===========================================
+  # DISCOVERY SERVICE (EUREKA)
+  # ===========================================
+  discovery-service:
+    build:
+      context: .
+      dockerfile: discovery-service/Dockerfile
+    container_name: saas-discovery
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      JAVA_OPTS: >
+        -Xms128m -Xmx384m
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=200
+        -XX:+UseContainerSupport
+    ports:
+      - "8761:8761"
+    networks:
+      - saas-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+        reservations:
+          memory: 384M
+
+  # ===========================================
+  # AUTH SERVICE
+  # ===========================================
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    container_name: saas-auth
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/saas_db?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      JAVA_OPTS: >
+        -Xms128m -Xmx512m
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=200
+        -XX:+UseContainerSupport
+    ports:
+      - "8082:8082"
+    networks:
+      - saas-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+
+  # ===========================================
+  # SYSTEM SERVICE
+  # ===========================================
+  system-service:
+    build:
+      context: .
+      dockerfile: system-service/Dockerfile
+    container_name: saas-system
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/saas_db?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      JAVA_OPTS: >
+        -Xms128m -Xmx512m
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=200
+        -XX:+UseContainerSupport
+    ports:
+      - "8083:8083"
+    networks:
+      - saas-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+
+  # ===========================================
+  # GATEWAY SERVICE
+  # ===========================================
+  gateway-service:
+    build:
+      context: .
+      dockerfile: gateway-service/Dockerfile
+    container_name: saas-gateway
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      JAVA_OPTS: >
+        -Xms128m -Xmx512m
+        -XX:+UseG1GC
+        -XX:MaxGCPauseMillis=200
+        -XX:+UseContainerSupport
+    ports:
+      - "8080:8080"
+    networks:
+      - saas-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      system-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 100s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+
+# ===========================================
+# NETWORKS & VOLUMES
+# ===========================================
+networks:
+  saas-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
