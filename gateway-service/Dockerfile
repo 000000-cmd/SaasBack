@@ -1,28 +1,22 @@
-# ===========================================
-# BUILD STAGE
-# ===========================================
 FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
+
+RUN apk add --no-cache bash
 
 WORKDIR /app
 
-# Copiar POMs primero
 COPY pom.xml .
-COPY saas-common/pom.xml saas-common/
-COPY gateway-service/pom.xml gateway-service/
+COPY saas-common/pom.xml saas-common/pom.xml
+COPY gateway-service/pom.xml gateway-service/pom.xml
 
-# Descargar dependencias
-RUN mvn -B -pl gateway-service -am dependency:go-offline || true
+RUN mvn -B dependency:go-offline -DskipTests 2>&1 || true
 
-# Copiar código fuente
-COPY saas-common/ saas-common/
-COPY gateway-service/ gateway-service/
+COPY saas-common/src saas-common/src
+COPY gateway-service/src gateway-service/src
 
-# Compilar
-RUN mvn -B -pl gateway-service -am clean package -DskipTests
+RUN echo "=== Building gateway-service ===" && \
+    mvn -B -pl gateway-service -am clean package -DskipTests 2>&1 | tee /tmp/build.log || \
+    (tail -100 /tmp/build.log && exit 1)
 
-# ===========================================
-# RUNTIME STAGE
-# ===========================================
 FROM eclipse-temurin:21-jre-alpine
 
 RUN apk add --no-cache curl bash \

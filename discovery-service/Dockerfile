@@ -1,28 +1,22 @@
-# ===========================================
-# BUILD STAGE
-# ===========================================
 FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
+
+RUN apk add --no-cache bash
 
 WORKDIR /app
 
-# Copiar POMs primero
 COPY pom.xml .
-COPY saas-common/pom.xml saas-common/
-COPY discovery-service/pom.xml discovery-service/
+COPY saas-common/pom.xml saas-common/pom.xml
+COPY discovery-service/pom.xml discovery-service/pom.xml
 
-# Descargar dependencias
-RUN mvn -B -pl discovery-service -am dependency:go-offline || true
+RUN mvn -B dependency:go-offline -DskipTests 2>&1 || true
 
-# Copiar código fuente
-COPY saas-common/ saas-common/
-COPY discovery-service/ discovery-service/
+COPY saas-common/src saas-common/src
+COPY discovery-service/src discovery-service/src
 
-# Compilar
-RUN mvn -B -pl discovery-service -am clean package -DskipTests
+RUN echo "=== Building discovery-service ===" && \
+    mvn -B -pl discovery-service -am clean package -DskipTests 2>&1 | tee /tmp/build.log || \
+    (tail -100 /tmp/build.log && exit 1)
 
-# ===========================================
-# RUNTIME STAGE
-# ===========================================
 FROM eclipse-temurin:21-jre-alpine
 
 RUN apk add --no-cache curl bash \

@@ -1,28 +1,22 @@
-# ===========================================
-# BUILD STAGE
-# ===========================================
 FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
+
+RUN apk add --no-cache bash
 
 WORKDIR /app
 
-# Copiar POMs primero (mejor cache)
 COPY pom.xml .
-COPY saas-common/pom.xml saas-common/
-COPY config-server/pom.xml config-server/
+COPY saas-common/pom.xml saas-common/pom.xml
+COPY config-server/pom.xml config-server/pom.xml
 
-# Descargar dependencias
-RUN mvn -B -pl config-server -am dependency:go-offline || true
+RUN mvn -B dependency:go-offline -DskipTests 2>&1 || true
 
-# Copiar código fuente
-COPY saas-common/ saas-common/
-COPY config-server/ config-server/
+COPY saas-common/src saas-common/src
+COPY config-server/src config-server/src
 
-# Compilar
-RUN mvn -B -pl config-server -am clean package -DskipTests
+RUN echo "=== Building config-server ===" && \
+    mvn -B -pl config-server -am clean package -DskipTests 2>&1 | tee /tmp/build.log || \
+    (tail -100 /tmp/build.log && exit 1)
 
-# ===========================================
-# RUNTIME STAGE
-# ===========================================
 FROM eclipse-temurin:21-jre-alpine
 
 RUN apk add --no-cache curl bash \

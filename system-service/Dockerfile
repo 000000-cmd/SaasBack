@@ -1,28 +1,22 @@
-# ===========================================
-# BUILD STAGE
-# ===========================================
 FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
+
+RUN apk add --no-cache bash
 
 WORKDIR /app
 
-# Copiar POMs primero
 COPY pom.xml .
-COPY saas-common/pom.xml saas-common/
-COPY system-service/pom.xml system-service/
+COPY saas-common/pom.xml saas-common/pom.xml
+COPY system-service/pom.xml system-service/pom.xml
 
-# Descargar dependencias
-RUN mvn -B -pl system-service -am dependency:go-offline || true
+RUN mvn -B dependency:go-offline -DskipTests 2>&1 || true
 
-# Copiar código fuente
-COPY saas-common/ saas-common/
-COPY system-service/ system-service/
+COPY saas-common/src saas-common/src
+COPY system-service/src system-service/src
 
-# Compilar
-RUN mvn -B -pl system-service -am clean package -DskipTests
+RUN echo "=== Building system-service ===" && \
+    mvn -B -pl system-service -am clean package -DskipTests 2>&1 | tee /tmp/build.log || \
+    (tail -100 /tmp/build.log && exit 1)
 
-# ===========================================
-# RUNTIME STAGE
-# ===========================================
 FROM eclipse-temurin:21-jre-alpine
 
 RUN apk add --no-cache curl bash \
