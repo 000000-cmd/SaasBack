@@ -48,6 +48,7 @@ services:
     container_name: saas-config-server
     restart: unless-stopped
     environment:
+      # ÚNICO servicio que usa profile 'native'
       SPRING_PROFILES_ACTIVE: native
       SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config
     ports:
@@ -81,12 +82,13 @@ services:
     container_name: saas-discovery
     restart: unless-stopped
     environment:
+      # USA 'default' para leer del Config Server
+      SPRING_PROFILES_ACTIVE: default
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
       SERVER_PORT: 8761
       EUREKA_INSTANCE_HOSTNAME: discovery-service
       EUREKA_CLIENT_REGISTER_WITH_EUREKA: "false"
       EUREKA_CLIENT_FETCH_REGISTRY: "false"
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
-      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
       JAVA_OPTS: "-Xms128m -Xmx384m -XX:+UseG1GC"
     ports:
       - "8761:8761"
@@ -120,11 +122,14 @@ services:
     container_name: saas-auth
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+      # USA 'default' para leer del Config Server
+      SPRING_PROFILES_ACTIVE: default
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      # Override explícito de conexión DB
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      # Override explícito de Eureka
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
     ports:
       - "8082:8082"
@@ -162,11 +167,14 @@ services:
     container_name: saas-system
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+      # USA 'default' para leer del Config Server
+      SPRING_PROFILES_ACTIVE: default
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      # Override explícito de conexión DB
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      # Override explícito de Eureka
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
     ports:
       - "8083:8083"
@@ -204,8 +212,10 @@ services:
     container_name: saas-gateway
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
+      # USA 'default' para leer del Config Server
+      SPRING_PROFILES_ACTIVE: default
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      # Override explícito de Eureka
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
     ports:
       - "8080:8080"
