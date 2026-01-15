@@ -18,6 +18,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 /**
  * Filtro global de autenticación para Spring Cloud Gateway
@@ -77,17 +78,35 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
             log.debug("Token validated successfully for user: {}", username);
 
-            // Agregar headers personalizados para microservicios downstream
-            ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()
-                    .header("X-User-Username", username)
-                    .header("X-User-Id", claims.get("userId", String.class))
-                    .header("X-User-Roles", claims.get("roles", String.class))
-                    .build();
+            // Construir el request modificado con headers personalizados
+            ServerHttpRequest.Builder requestBuilder = exchange.getRequest().mutate()
+                    .header("X-User-Username", username);
+
+            // Agregar userId si existe
+            Object userId = claims.get("userId");
+            if (userId != null) {
+                requestBuilder.header("X-User-Id", userId.toString());
+            }
+
+            // Agregar roles si existen (puede ser una lista)
+            Object roles = claims.get("roles");
+            if (roles != null) {
+                if (roles instanceof List) {
+                    // Si es una lista, convertir a string separado por comas
+                    String rolesStr = String.join(",", (List<String>) roles);
+                    requestBuilder.header("X-User-Roles", rolesStr);
+                } else {
+                    // Si es un string simple
+                    requestBuilder.header("X-User-Roles", roles.toString());
+                }
+            }
+
+            ServerHttpRequest modifiedRequest = requestBuilder.build();
 
             return chain.filter(exchange.mutate().request(modifiedRequest).build());
 
         } catch (Exception e) {
-            log.error("Error processing token: {}", e.getMessage());
+            log.error("Error processing token: {}", e.getMessage(), e);
             return onError(exchange, "Error processing authentication token", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

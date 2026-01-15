@@ -18,16 +18,33 @@ public class RouteValidator {
 
     /**
      * Lista de endpoints públicos que NO requieren autenticación
+     * Incluye patrones completos con prefijos de servicios
      */
     public static final List<String> PUBLIC_ENDPOINTS = List.of(
+            // Auth service endpoints
+            "/auth-service/api/auth/login",
+            "/auth-service/api/auth/refresh",
+            "/auth-service/api/auth/register",
+            "/auth-service/api/auth/apiV",
             "/api/auth/login",
             "/api/auth/refresh",
             "/api/auth/register",
             "/api/auth/apiV",
+
+            // Third parties
             "/api/thirdparties/create",
+            "/thirdparties-service/api/thirdparties/create",
+
+            // Eureka
             "/eureka",
+
+            // Actuator endpoints (todos los servicios)
             "/actuator/health",
-            "/actuator/info"
+            "/actuator/info",
+            "/auth-service/actuator/health",
+            "/auth-service/actuator/info",
+            "/system-service/actuator/health",
+            "/system-service/actuator/info"
     );
 
     /**
