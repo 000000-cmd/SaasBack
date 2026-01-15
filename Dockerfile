@@ -1,16 +1,13 @@
 # ===========================================
-# BUILD STAGE
+# STAGE 1: BUILD ALL SERVICES
 # ===========================================
 FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
 
-RUN apk add --no-cache bash
+ENV MAVEN_OPTS="-Xmx1024m -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
 
 WORKDIR /app
 
-# ARG para determinar qué servicio construir
-ARG SERVICE_NAME
-
-# Copiar estructura completa del monorepo
+# Copiar TODO el monorepo
 COPY pom.xml .
 COPY saas-common/ saas-common/
 COPY config-server/ config-server/
@@ -19,41 +16,103 @@ COPY gateway-service/ gateway-service/
 COPY auth-service/ auth-service/
 COPY system-service/ system-service/
 
-# Descargar dependencias (una sola vez para todos)
-RUN mvn -B dependency:go-offline -DskipTests || true
-
-# Compilar el servicio específico con logs detallados
-RUN echo "=== Building ${SERVICE_NAME} ===" && \
-    mvn -B -pl ${SERVICE_NAME} -am clean package -DskipTests -X && \
-    echo "=== Build completed for ${SERVICE_NAME} ===" && \
-    ls -la ${SERVICE_NAME}/target/
+# Compilar TODO de una vez
+RUN echo "=== Compilando TODOS los servicios ===" && \
+    mvn clean package -DskipTests -B && \
+    echo "=== Compilación completada ===" && \
+    ls -la */target/*.jar
 
 # ===========================================
-# RUNTIME STAGE
+# STAGE 2: CONFIG SERVER
 # ===========================================
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:21-jre-alpine AS config-server
 
-ARG SERVICE_NAME
-ARG SERVICE_PORT=8080
-
-RUN apk add --no-cache curl bash && \
+RUN apk add --no-cache curl bash tzdata && \
     addgroup -g 1001 appgroup && \
     adduser -D -u 1001 -G appgroup appuser
 
 WORKDIR /app
-
-# Copiar el JAR compilado
-COPY --from=builder /app/${SERVICE_NAME}/target/*.jar app.jar
-
+COPY --from=builder /app/config-server/target/*.jar app.jar
 RUN chown -R appuser:appgroup /app
 
 USER appuser
+EXPOSE 8888
 
-EXPOSE ${SERVICE_PORT}
+ENV JAVA_OPTS="-Xms128m -Xmx256m -XX:+UseG1GC -XX:+UseContainerSupport"
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]
 
-ENV JAVA_OPTS="-Xms128m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UseContainerSupport"
+# ===========================================
+# STAGE 3: DISCOVERY SERVICE
+# ===========================================
+FROM eclipse-temurin:21-jre-alpine AS discovery-service
 
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s \
-  CMD curl -f http://localhost:${SERVICE_PORT}/actuator/health || exit 1
+RUN apk add --no-cache curl bash tzdata && \
+    addgroup -g 1001 appgroup && \
+    adduser -D -u 1001 -G appgroup appuser
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+WORKDIR /app
+COPY --from=builder /app/discovery-service/target/*.jar app.jar
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+EXPOSE 8761
+
+ENV JAVA_OPTS="-Xms128m -Xmx384m -XX:+UseG1GC -XX:+UseContainerSupport"
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]
+
+# ===========================================
+# STAGE 4: GATEWAY SERVICE
+# ===========================================
+FROM eclipse-temurin:21-jre-alpine AS gateway-service
+
+RUN apk add --no-cache curl bash tzdata && \
+    addgroup -g 1001 appgroup && \
+    adduser -D -u 1001 -G appgroup appuser
+
+WORKDIR /app
+COPY --from=builder /app/gateway-service/target/*.jar app.jar
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+EXPOSE 8080
+
+ENV JAVA_OPTS="-Xms128m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport"
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]
+
+# ===========================================
+# STAGE 5: AUTH SERVICE
+# ===========================================
+FROM eclipse-temurin:21-jre-alpine AS auth-service
+
+RUN apk add --no-cache curl bash tzdata && \
+    addgroup -g 1001 appgroup && \
+    adduser -D -u 1001 -G appgroup appuser
+
+WORKDIR /app
+COPY --from=builder /app/auth-service/target/*.jar app.jar
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+EXPOSE 8082
+
+ENV JAVA_OPTS="-Xms128m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport"
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]
+
+# ===========================================
+# STAGE 6: SYSTEM SERVICE
+# ===========================================
+FROM eclipse-temurin:21-jre-alpine AS system-service
+
+RUN apk add --no-cache curl bash tzdata && \
+    addgroup -g 1001 appgroup && \
+    adduser -D -u 1001 -G appgroup appuser
+
+WORKDIR /app
+COPY --from=builder /app/system-service/target/*.jar app.jar
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+EXPOSE 8083
+
+ENV JAVA_OPTS="-Xms128m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport"
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]

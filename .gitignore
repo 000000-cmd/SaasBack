@@ -1,0 +1,46 @@
+# Maven
+**/target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+*.swp
+*.swo
+*~
+
+# Variables de entorno - IMPORTANTE
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Logs
+*.log
+logs/
+/var/log/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backups
+/opt/saas-backups/
+*.sql
+*.sql.gz
+
+# Docker volumes
+mysql_data/
+
+# Testing
+**/src/test/
+**/*.test.*
+**/*.spec.*
+
+# Temporal
+*.tmp
+*.temp
+.cache/
