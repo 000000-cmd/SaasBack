@@ -81,6 +81,10 @@ services:
     container_name: saas-discovery
     restart: unless-stopped
     environment:
+      SERVER_PORT: 8761
+      EUREKA_INSTANCE_HOSTNAME: discovery-service
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: "false"
+      EUREKA_CLIENT_FETCH_REGISTRY: "false"
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
       JAVA_OPTS: "-Xms128m -Xmx384m -XX:+UseG1GC"
