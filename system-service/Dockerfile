@@ -3,9 +3,8 @@ FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
 RUN apk add --no-cache bash
 WORKDIR /app
 
-COPY pom.xml .
-COPY saas-common saas-common
-COPY system-service system-service
+COPY system-service/pom.xml system-service/pom.xml
+COPY system-service/src system-service/src
 
 RUN mvn -B -pl system-service -am clean package -DskipTests
 

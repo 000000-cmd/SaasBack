@@ -3,9 +3,8 @@ FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
 RUN apk add --no-cache bash
 WORKDIR /app
 
-COPY pom.xml .
-COPY saas-common saas-common
-COPY discovery-service discovery-service
+COPY discovery-service/pom.xml discovery-service/pom.xml
+COPY discovery-service/src discovery-service/src
 
 RUN mvn -B -pl discovery-service -am clean package -DskipTests
 
