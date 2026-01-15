@@ -20,8 +20,8 @@
         </processorPath>
         <module name="config-server" />
         <module name="auth-service" />
-        <module name="system-service" />
         <module name="saas-common" />
+        <module name="system-service" />
         <module name="discovery-service" />
         <module name="gateway-service" />
       </profile>

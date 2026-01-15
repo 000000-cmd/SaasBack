@@ -1,4 +1,0 @@
-com\saas\gatewayservice\components\JwtUtil.class
-com\saas\gatewayservice\GatewayServiceApplication.class
-com\saas\gatewayservice\components\AuthenticationFilter.class
-com\saas\gatewayservice\config\SecurityConfig.class

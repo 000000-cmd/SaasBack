@@ -1,77 +1,119 @@
 package com.saas.gatewayservice.components;
 
 import io.jsonwebtoken.Claims;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.function.Predicate;
+import java.nio.charset.StandardCharsets;
 
+/**
+ * Filtro global de autenticación para Spring Cloud Gateway
+ * Valida tokens JWT en todas las peticiones excepto endpoints públicos
+ */
 @Component
 @RefreshScope
 public class AuthenticationFilter implements GlobalFilter, Ordered {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthenticationFilter.class);
+    private static final String BEARER_PREFIX = "Bearer ";
+
     @Autowired
     private JwtUtil jwtUtil;
 
-    public static final List<String> openApiEndpoints = List.of(
-            "/api/auth/login",
-            "/api/auth/refresh",
-            "/api/auth/apiV",
-            "/api/thirdparties/create",
-            "/eureka"
-    );
+    @Autowired
+    private RouteValidator routeValidator;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
+        String path = request.getURI().getPath();
 
-        // Lógica: Si la URL coincide con alguna pública, isApiSecured será FALSE
-        Predicate<ServerHttpRequest> isApiSecured = r -> openApiEndpoints.stream()
-                .noneMatch(uri -> r.getURI().getPath().contains(uri));
+        log.debug("Processing request to: {}", path);
 
-        // Si es segura (no está en la lista pública), validamos token
-        if (isApiSecured.test(request)) {
-            if (!request.getHeaders().containsKey("Authorization")) {
-                return this.onError(exchange, "Authorization header is missing", HttpStatus.UNAUTHORIZED);
-            }
-
-            final String token = this.getAuthHeader(request);
-
-            if (!jwtUtil.validateToken(token)) {
-                return this.onError(exchange, "Authorization header is invalid", HttpStatus.UNAUTHORIZED);
-            }
-
-            // Token válido, extraemos usuario y seguimos
-            Claims claims = jwtUtil.extractAllClaims(token);
-            exchange.getRequest().mutate()
-                    .header("X-User-Username", claims.getSubject())
-                    .build();
+        // Si es una ruta pública, continuar sin validación
+        if (!routeValidator.requiresAuthentication(request)) {
+            log.debug("Public endpoint accessed, skipping authentication: {}", path);
+            return chain.filter(exchange);
         }
 
-        return chain.filter(exchange);
+        // Validar presencia del header Authorization
+        if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
+            log.warn("Missing Authorization header for secured endpoint: {}", path);
+            return onError(exchange, "Missing Authorization header", HttpStatus.UNAUTHORIZED);
+        }
+
+        // Extraer token
+        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+            log.warn("Invalid Authorization header format: {}", authHeader);
+            return onError(exchange, "Invalid Authorization header format", HttpStatus.UNAUTHORIZED);
+        }
+
+        String token = authHeader.substring(BEARER_PREFIX.length());
+
+        // Validar token
+        if (!jwtUtil.validateToken(token)) {
+            log.warn("Invalid or expired token for path: {}", path);
+            return onError(exchange, "Invalid or expired token", HttpStatus.UNAUTHORIZED);
+        }
+
+        try {
+            // Extraer claims y agregar headers personalizados
+            Claims claims = jwtUtil.extractAllClaims(token);
+            String username = claims.getSubject();
+
+            log.debug("Token validated successfully for user: {}", username);
+
+            // Agregar headers personalizados para microservicios downstream
+            ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()
+                    .header("X-User-Username", username)
+                    .header("X-User-Id", claims.get("userId", String.class))
+                    .header("X-User-Roles", claims.get("roles", String.class))
+                    .build();
+
+            return chain.filter(exchange.mutate().request(modifiedRequest).build());
+
+        } catch (Exception e) {
+            log.error("Error processing token: {}", e.getMessage());
+            return onError(exchange, "Error processing authentication token", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
-    private Mono<Void> onError(ServerWebExchange exchange, String err, HttpStatus httpStatus) {
+    /**
+     * Maneja errores de autenticación con respuesta JSON
+     */
+    private Mono<Void> onError(ServerWebExchange exchange, String message, HttpStatus status) {
         ServerHttpResponse response = exchange.getResponse();
-        response.setStatusCode(httpStatus);
-        return response.setComplete();
+        response.setStatusCode(status);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
+        String errorBody = String.format(
+                "{\"error\":\"%s\",\"message\":\"%s\",\"status\":%d}",
+                status.getReasonPhrase(),
+                message,
+                status.value()
+        );
+
+        byte[] bytes = errorBody.getBytes(StandardCharsets.UTF_8);
+        return response.writeWith(Mono.just(response.bufferFactory().wrap(bytes)));
     }
 
-    private String getAuthHeader(ServerHttpRequest request) {
-        return request.getHeaders().getOrEmpty("Authorization").get(0).substring(7);
-    }
-
-    // Define la prioridad: -1 hace que se ejecute muy temprano
+    /**
+     * Prioridad del filtro: -1 para ejecutarse antes que otros filtros
+     */
     @Override
     public int getOrder() {
         return -1;
