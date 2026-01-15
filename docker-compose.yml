@@ -34,8 +34,6 @@ services:
         limits:
           memory: 1G
           cpus: '0.5'
-        reservations:
-          memory: 512M
 
   # ===========================================
   # CONFIG SERVER
@@ -43,17 +41,15 @@ services:
   config-server:
     build:
       context: .
-      dockerfile: config-server/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: config-server
+        SERVICE_PORT: 8888
     container_name: saas-config-server
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: native
       SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config
-      JAVA_OPTS: >
-        -Xms128m -Xmx256m
-        -XX:+UseG1GC
-        -XX:MaxGCPauseMillis=200
-        -XX:+UseContainerSupport
     ports:
       - "8888:8888"
     volumes:
@@ -71,8 +67,6 @@ services:
         limits:
           memory: 384M
           cpus: '0.3'
-        reservations:
-          memory: 256M
 
   # ===========================================
   # DISCOVERY SERVICE (EUREKA)
@@ -80,17 +74,16 @@ services:
   discovery-service:
     build:
       context: .
-      dockerfile: discovery-service/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: discovery-service
+        SERVICE_PORT: 8761
     container_name: saas-discovery
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
-      JAVA_OPTS: >
-        -Xms128m -Xmx384m
-        -XX:+UseG1GC
-        -XX:MaxGCPauseMillis=200
-        -XX:+UseContainerSupport
+      JAVA_OPTS: "-Xms128m -Xmx384m -XX:+UseG1GC"
     ports:
       - "8761:8761"
     networks:
@@ -109,8 +102,6 @@ services:
         limits:
           memory: 512M
           cpus: '0.3'
-        reservations:
-          memory: 384M
 
   # ===========================================
   # AUTH SERVICE
@@ -118,7 +109,10 @@ services:
   auth-service:
     build:
       context: .
-      dockerfile: auth-service/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: auth-service
+        SERVICE_PORT: 8082
     container_name: saas-auth
     restart: unless-stopped
     environment:
@@ -128,11 +122,6 @@ services:
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
-      JAVA_OPTS: >
-        -Xms128m -Xmx512m
-        -XX:+UseG1GC
-        -XX:MaxGCPauseMillis=200
-        -XX:+UseContainerSupport
     ports:
       - "8082:8082"
     networks:
@@ -145,7 +134,7 @@ services:
       discovery-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
       interval: 20s
       timeout: 10s
       retries: 15
@@ -155,8 +144,6 @@ services:
         limits:
           memory: 768M
           cpus: '0.5'
-        reservations:
-          memory: 512M
 
   # ===========================================
   # SYSTEM SERVICE
@@ -164,7 +151,10 @@ services:
   system-service:
     build:
       context: .
-      dockerfile: system-service/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: system-service
+        SERVICE_PORT: 8083
     container_name: saas-system
     restart: unless-stopped
     environment:
@@ -174,11 +164,6 @@ services:
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
-      JAVA_OPTS: >
-        -Xms128m -Xmx512m
-        -XX:+UseG1GC
-        -XX:MaxGCPauseMillis=200
-        -XX:+UseContainerSupport
     ports:
       - "8083:8083"
     networks:
@@ -191,7 +176,7 @@ services:
       discovery-service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
       interval: 20s
       timeout: 10s
       retries: 15
@@ -201,8 +186,6 @@ services:
         limits:
           memory: 768M
           cpus: '0.5'
-        reservations:
-          memory: 512M
 
   # ===========================================
   # GATEWAY SERVICE
@@ -210,18 +193,16 @@ services:
   gateway-service:
     build:
       context: .
-      dockerfile: gateway-service/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: gateway-service
+        SERVICE_PORT: 8080
     container_name: saas-gateway
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
-      JAVA_OPTS: >
-        -Xms128m -Xmx512m
-        -XX:+UseG1GC
-        -XX:MaxGCPauseMillis=200
-        -XX:+UseContainerSupport
     ports:
       - "8080:8080"
     networks:
@@ -246,8 +227,6 @@ services:
         limits:
           memory: 768M
           cpus: '0.5'
-        reservations:
-          memory: 512M
 
 # ===========================================
 # NETWORKS & VOLUMES

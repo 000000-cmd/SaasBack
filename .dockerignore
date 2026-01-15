@@ -1,8 +1,6 @@
-# Maven
-target/
+# Maven - Solo ignorar targets compilados localmente
+**/target/
 !.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
 
 # IDE
 .idea/
@@ -19,9 +17,9 @@ target/
 .gitignore
 .gitattributes
 
-# Docker
-Dockerfile
-docker-compose*.yml
+# Docker - NO ignorar Dockerfiles ni docker-compose
+# Dockerfile
+# docker-compose*.yml
 .dockerignore
 
 # Logs
@@ -32,7 +30,21 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Otros
+# Documentación
 README.md
+docs/
 *.md
-.env
+
+# Variables locales
+.env.local
+.env.*.local
+
+# Testing
+**/src/test/
+**/*.test.*
+**/*.spec.*
+
+# Temporal
+*.tmp
+*.temp
+.cache/
