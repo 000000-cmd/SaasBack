@@ -4,18 +4,11 @@ RUN apk add --no-cache bash
 WORKDIR /app
 
 COPY pom.xml .
-COPY saas-common/pom.xml saas-common/pom.xml
-COPY system-service/pom.xml system-service/pom.xml
+COPY saas-common saas-common
+COPY system-service system-service
 
-RUN mvn -B dependency:go-offline -DskipTests || true
+RUN mvn -B -pl system-service -am clean package -DskipTests
 
-COPY saas-common/src saas-common/src
-COPY system-service/src system-service/src
-
-RUN echo "=== Building system-service ===" && \
-    mvn -B -pl system-service -am clean package -DskipTests
-
-# -------------------------
 FROM eclipse-temurin:21-jre-alpine
 
 RUN apk add --no-cache curl \
@@ -32,4 +25,5 @@ EXPOSE 8083
 ENV JAVA_OPTS="-Xms128m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport"
 
 ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]
+
 

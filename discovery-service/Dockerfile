@@ -3,23 +3,12 @@ FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
 RUN apk add --no-cache bash
 WORKDIR /app
 
-# POMs
 COPY pom.xml .
-COPY saas-common/pom.xml saas-common/pom.xml
-COPY discovery-service/pom.xml discovery-service/pom.xml
+COPY saas-common saas-common
+COPY discovery-service discovery-service
 
-# Dependencias (no rompe el build)
-RUN mvn -B dependency:go-offline -DskipTests || true
+RUN mvn -B -pl discovery-service -am clean package -DskipTests
 
-# Código
-COPY saas-common/src saas-common/src
-COPY discovery-service/src discovery-service/src
-
-# Build
-RUN echo "=== Building discovery-service ===" && \
-    mvn -B -pl discovery-service -am clean package -DskipTests
-
-# -------------------------
 FROM eclipse-temurin:21-jre-alpine
 
 RUN apk add --no-cache curl \
@@ -36,3 +25,4 @@ EXPOSE 8761
 ENV JAVA_OPTS="-Xms128m -Xmx384m -XX:+UseG1GC -XX:+UseContainerSupport"
 
 ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]
+
