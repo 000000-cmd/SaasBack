@@ -445,5 +445,4 @@ else
     echo -e "${YELLOW}⚠️  ADVERTENCIA: Solo $ALL_HEALTHY de $TOTAL_SERVICES servicios están operativos${NC}"
     echo -e "${YELLOW}   Revisa los logs con: docker compose logs${NC}"
 fi
-
 echo ""
