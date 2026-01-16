@@ -40,6 +40,9 @@ services:
       context: .
       dockerfile: Dockerfile
       target: config-server
+      # Forzar rebuild sin caché
+      args:
+        BUILDKIT_INLINE_CACHE: 0
     image: saas-config-server:latest
     container_name: saas-config-server
     restart: unless-stopped
@@ -54,10 +57,10 @@ services:
       - saas-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 45s
 
   # ===========================================
   # DISCOVERY SERVICE
@@ -67,6 +70,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: discovery-service
+      args:
+        BUILDKIT_INLINE_CACHE: 0
     image: saas-discovery:latest
     container_name: saas-discovery
     restart: unless-stopped
@@ -82,10 +87,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 90s
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
 
   # ===========================================
   # AUTH SERVICE
@@ -95,6 +100,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: auth-service
+      args:
+        BUILDKIT_INLINE_CACHE: 0
     image: saas-auth:latest
     container_name: saas-auth
     restart: unless-stopped
@@ -105,6 +112,8 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      # Aumentar timeout de inicio
+      JAVA_OPTS: "-Xms128m -Xmx512m -XX:+UseG1GC"
     ports:
       - "8082:8082"
     networks:
@@ -118,10 +127,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
-      interval: 20s
+      interval: 15s
       timeout: 10s
-      retries: 15
-      start_period: 120s
+      retries: 20
+      start_period: 90s
 
   # ===========================================
   # SYSTEM SERVICE
@@ -131,6 +140,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: system-service
+      args:
+        BUILDKIT_INLINE_CACHE: 0
     image: saas-system:latest
     container_name: saas-system
     restart: unless-stopped
@@ -141,6 +152,7 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      JAVA_OPTS: "-Xms128m -Xmx512m -XX:+UseG1GC"
     ports:
       - "8083:8083"
     networks:
@@ -154,10 +166,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
-      interval: 20s
+      interval: 15s
       timeout: 10s
-      retries: 15
-      start_period: 120s
+      retries: 20
+      start_period: 90s
 
   # ===========================================
   # GATEWAY SERVICE
@@ -167,6 +179,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: gateway-service
+      args:
+        BUILDKIT_INLINE_CACHE: 0
     image: saas-gateway:latest
     container_name: saas-gateway
     restart: unless-stopped
@@ -174,6 +188,7 @@ services:
       SPRING_PROFILES_ACTIVE: default
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      JAVA_OPTS: "-Xms128m -Xmx512m -XX:+UseG1GC"
     ports:
       - "8080:8080"
     networks:
@@ -189,10 +204,10 @@ services:
         condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 120s
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
 
 networks:
   saas-network:
