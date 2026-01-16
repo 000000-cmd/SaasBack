@@ -38,12 +38,14 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // 🔴 ORÍGENES EXPLÍCITOS (NO *)
-        configuration.setAllowedOrigins(List.of(
-                "http://72.62.174.193:8080",
-                "http://localhost:8080",
-                "http://127.0.0.1:8080"
-        ));
+        configuration.setAllowedOriginPatterns(List.of("*"));
+
+        //específico:
+        // configuration.setAllowedOriginPatterns(List.of(
+        //     "http://72.62.174.193:*",
+        //     "http://localhost:*",
+        //     "http://127.0.0.1:*"
+        // ));
 
         configuration.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
