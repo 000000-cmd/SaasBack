@@ -2,16 +2,17 @@
 
 # ============================================
 # SCRIPT DE DEPLOYMENT AUTOMÁTICO
+# Con limpieza forzada de imágenes
 # ============================================
 
-set -e  # Exit on error
+set -e
 
 # Colores
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # Configuración
 REPO_DIR="/opt/saas-platform"
@@ -41,20 +42,20 @@ cat << "EOF"
 EOF
 echo -e "${NC}"
 
-# Verificar que estamos en el directorio correcto
+# Verificar directorio
 cd "$REPO_DIR" || error "No se puede acceder a $REPO_DIR"
 
-# Verificar que existe .env
-if [ ! -f .env ]; then
-    error "❌ Archivo .env no encontrado"
-fi
+# Verificar .env
+[ ! -f .env ] && error "❌ Archivo .env no encontrado"
 
-# Cargar variables de entorno
+# Cargar variables
 set -a
 source .env
 set +a
 
-# 1. BACKUP (solo si MySQL existe)
+# ===========================================
+# 1. BACKUP DE MYSQL
+# ===========================================
 log "📦 Verificando si MySQL necesita backup..."
 mkdir -p "$BACKUP_DIR"
 
@@ -62,117 +63,168 @@ if docker ps 2>/dev/null | grep -q saas-mysql; then
     log "   MySQL detectado, creando backup..."
     BACKUP_FILE="$BACKUP_DIR/mysql-backup-$(date +%Y%m%d-%H%M%S).sql"
 
-    if docker exec saas-mysql mysqladmin ping -h localhost -uroot -p${MYSQL_ROOT_PASSWORD} > /dev/null 2>&1; then
+    if docker exec saas-mysql mysqladmin ping -h localhost -uroot -p${MYSQL_ROOT_PASSWORD} >/dev/null 2>&1; then
         docker exec saas-mysql mysqldump -uroot -p${MYSQL_ROOT_PASSWORD} --all-databases > "$BACKUP_FILE" 2>/dev/null || true
+
         if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
-            log "   ✅ Backup creado: $BACKUP_FILE"
+            gzip "$BACKUP_FILE"
+            log "   ✅ Backup: ${BACKUP_FILE}.gz"
         else
-            warning "   ⚠️  Backup falló, pero continuando..."
+            warning "   ⚠️  Backup falló, continuando..."
         fi
     else
         warning "   ⚠️  MySQL no responde, saltando backup"
     fi
 else
-    log "   ℹ️  MySQL no existe aún (primera ejecución), saltando backup"
+    log "   ℹ️  Primera ejecución, saltando backup"
 fi
 
-# 2. PULL LATEST CODE
-log "📥 Obteniendo últimos cambios del repositorio..."
-git fetch origin 2>&1 | tee -a "$LOG_FILE"
-git pull origin main 2>&1 | tee -a "$LOG_FILE" || warning "Error al hacer pull (puede ser normal si no hay cambios)"
+# ===========================================
+# 2. ACTUALIZAR CÓDIGO
+# ===========================================
+log "📥 Obteniendo cambios del repositorio..."
+git fetch origin 2>&1 | tee -a "$LOG_FILE" || error "❌ git fetch falló"
+git reset --hard origin/main 2>&1 | tee -a "$LOG_FILE" || error "❌ No se pudo sincronizar"
 
 COMMIT_HASH=$(git rev-parse --short HEAD)
-log "✅ Código en commit: $COMMIT_HASH"
+log "✅ Código actualizado a commit: $COMMIT_HASH"
 
-# 3. BUILD IMAGES
-log "🏗️  Construyendo imágenes Docker (esto puede tardar 10-15 minutos la primera vez)..."
-log "   📝 Tip: Puedes ver el progreso en otra terminal con: docker compose logs -f"
+# ===========================================
+# 3. DETENER Y LIMPIAR CONTENEDORES
+# ===========================================
+log "🛑 Deteniendo todos los servicios..."
+docker compose down 2>&1 | tee -a "$LOG_FILE" || warning "   ⚠️  Error al detener servicios"
 
-docker compose build --pull 2>&1 | tee -a "$LOG_FILE"
-if [ ${PIPESTATUS[0]} -ne 0 ]; then
-    error "❌ Error al construir las imágenes. Revisa los logs arriba."
+# ===========================================
+# 4. LIMPIEZA FORZADA DE IMÁGENES ANTIGUAS
+# ===========================================
+log "🗑️  Eliminando imágenes antiguas de SAAS..."
+
+# Obtener IDs de imágenes SAAS
+OLD_IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep "saas-" | awk '{print $2}')
+
+if [ ! -z "$OLD_IMAGES" ]; then
+    log "   Encontradas $(echo "$OLD_IMAGES" | wc -l) imágenes antiguas"
+    echo "$OLD_IMAGES" | xargs docker rmi -f 2>/dev/null || warning "   ⚠️  Algunas imágenes no se pudieron eliminar"
+    log "   ✅ Imágenes antiguas eliminadas"
+else
+    log "   ℹ️  No hay imágenes antiguas que eliminar"
 fi
+
+# Limpiar imágenes huérfanas
+log "🧹 Limpiando imágenes huérfanas..."
+docker image prune -f >/dev/null 2>&1
+
+# ===========================================
+# 5. CONSTRUIR IMÁGENES DESDE CERO
+# ===========================================
+log "🏗️  Construyendo imágenes DESDE CERO (10-15 min primera vez)..."
+log "   💡 Tip: Ver progreso en otra terminal con: docker compose logs -f"
+
+docker compose build --no-cache --pull 2>&1 | tee -a "$LOG_FILE"
+
+if [ ${PIPESTATUS[0]} -ne 0 ]; then
+    error "❌ Error al construir imágenes. Revisa los logs arriba."
+fi
+
 log "✅ Imágenes construidas exitosamente"
 
-# 4. STOP OLD CONTAINERS (excepto MySQL si existe)
-if docker ps 2>/dev/null | grep -q "saas-"; then
-    log "🛑 Deteniendo servicios antiguos..."
-    docker compose stop config-server discovery-service auth-service system-service gateway-service 2>/dev/null || true
-    log "✅ Servicios detenidos"
-else
-    log "ℹ️  No hay servicios previos que detener (primera ejecución)"
-fi
+# Verificar que las imágenes se crearon
+log "📊 Imágenes creadas:"
+docker images | grep "saas-" | tee -a "$LOG_FILE"
 
-# 5. START NEW CONTAINERS
+# ===========================================
+# 6. INICIAR SERVICIOS
+# ===========================================
 log "🚀 Iniciando servicios..."
-docker compose up -d 2>&1 | tee -a "$LOG_FILE"
-if [ $? -ne 0 ]; then
-    error "❌ Error al iniciar los servicios"
-fi
+docker compose up -d 2>&1 | tee -a "$LOG_FILE" || error "❌ Error al iniciar servicios"
 
-# 6. WAIT FOR SERVICES
-log "⏳ Esperando que los servicios estén listos (puede tardar 2-3 minutos)..."
+# ===========================================
+# 7. ESPERAR Y VERIFICAR SERVICIOS
+# ===========================================
+log "⏳ Esperando que los servicios estén listos (2-3 min)..."
+sleep 20
 
 wait_for_service() {
-    local service=$1
+    local name=$1
     local port=$2
     local max_attempts=60
-    local attempt=0
 
-    echo -n "   Esperando $service (puerto $port)... "
+    echo -n "   Esperando $name (puerto $port)... "
 
-    while [ $attempt -lt $max_attempts ]; do
-        if curl -sf http://localhost:$port/actuator/health > /dev/null 2>&1; then
-            echo -e "${GREEN}✅${NC}"
+    for attempt in $(seq 1 $max_attempts); do
+        if curl -sf http://localhost:$port/actuator/health >/dev/null 2>&1; then
+            echo -e "${GREEN}✅ UP${NC}"
             return 0
         fi
-        attempt=$((attempt + 1))
         sleep 3
     done
 
-    echo -e "${RED}❌ TIMEOUT${NC}"
-    warning "   $service no respondió a tiempo. Ver logs: docker compose logs $service"
+    echo -e "${YELLOW}⚠️  TIMEOUT${NC}"
+    warning "   $name no respondió a tiempo"
     return 1
 }
 
-sleep 15  # Initial wait
-
+# Verificar servicios en orden
 wait_for_service "Config Server" 8888
-wait_for_service "Discovery Service" 8761
+wait_for_service "Discovery" 8761
 wait_for_service "Auth Service" 8082
 wait_for_service "System Service" 8083
 wait_for_service "Gateway" 8080
 
-# 7. CLEANUP OLD IMAGES
-log "🧹 Limpiando imágenes antiguas..."
-docker image prune -f > /dev/null 2>&1
-log "✅ Limpieza completada"
+# ===========================================
+# 8. LIMPIEZA FINAL
+# ===========================================
+log "🧹 Limpieza final..."
+docker image prune -f >/dev/null 2>&1
+docker container prune -f >/dev/null 2>&1
 
-# 8. VERIFICAR ESTADO FINAL
+# ===========================================
+# 9. VERIFICACIÓN FINAL
+# ===========================================
 log "📊 Estado final de los servicios:"
-docker compose ps
+docker compose ps | tee -a "$LOG_FILE"
 
-# 9. MOSTRAR LOGS RECIENTES SI HAY ERRORES
+# Verificar que todos estén UP
 if ! docker compose ps | grep -q "Up"; then
-    warning "⚠️  Algunos servicios no están UP. Mostrando logs..."
-    docker compose logs --tail=50
+    warning "⚠️  Algunos servicios no están UP. Logs recientes:"
+    docker compose logs --tail=30 2>&1 | tee -a "$LOG_FILE"
 fi
 
+# ===========================================
+# RESUMEN FINAL
+# ===========================================
 echo ""
 echo -e "${GREEN}╔═══════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║   ✅ DEPLOYMENT COMPLETADO                ║${NC}"
 echo -e "${GREEN}╚═══════════════════════════════════════════╝${NC}"
 echo ""
-log "🎉 Deployment completado en commit: $COMMIT_HASH"
-log "📍 Endpoints disponibles:"
-log "   - Gateway:   http://$(hostname -I | awk '{print $1}'):8080"
-log "   - Eureka:    http://$(hostname -I | awk '{print $1}'):8761"
-log "   - Auth API:  http://$(hostname -I | awk '{print $1}'):8082"
-log "   - System API: http://$(hostname -I | awk '{print $1}'):8083"
+
+log "🎉 Deployment completado exitosamente"
+log "📍 Commit desplegado: $COMMIT_HASH"
+log ""
+log "🌐 Endpoints disponibles:"
+IP_ADDR=$(hostname -I | awk '{print $1}')
+log "   Gateway:    http://${IP_ADDR}:8080"
+log "   Eureka:     http://${IP_ADDR}:8761"
+log "   Auth API:   http://${IP_ADDR}:8082"
+log "   System API: http://${IP_ADDR}:8083"
+log "   Config:     http://${IP_ADDR}:8888"
 echo ""
 log "📝 Comandos útiles:"
-log "   Ver logs:    docker compose logs -f"
-log "   Ver estado:  docker compose ps"
-log "   Reiniciar:   docker compose restart <servicio>"
-log "   Ver health:  curl http://localhost:8080/actuator/health"
+log "   Ver logs:        docker compose logs -f [servicio]"
+log "   Ver estado:      docker compose ps"
+log "   Reiniciar todo:  docker compose restart"
+log "   Health Gateway:  curl http://localhost:8080/actuator/health"
+log "   Health Auth:     curl http://localhost:8082/actuator/health"
 echo ""
+
+# Verificación rápida del gateway
+log "🔍 Verificación rápida del Gateway..."
+if curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1; then
+    log "   ✅ Gateway respondiendo correctamente"
+else
+    warning "   ⚠️  Gateway no responde, verifica los logs"
+fi
+
+log "✅ Deployment finalizado - $(date)"

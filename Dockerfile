@@ -7,7 +7,7 @@ ENV MAVEN_OPTS="-Xmx1024m -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
 
 WORKDIR /app
 
-# Copiar TODO el monorepo
+# Copiar el monorepo
 COPY pom.xml .
 COPY saas-common/ saas-common/
 COPY config-server/ config-server/
@@ -16,7 +16,7 @@ COPY gateway-service/ gateway-service/
 COPY auth-service/ auth-service/
 COPY system-service/ system-service/
 
-# Compilar TODO de una vez
+# Compilar una vez
 RUN echo "=== Compilando TODOS los servicios ===" && \
     mvn clean package -DskipTests -B && \
     echo "=== Compilación completada ===" && \
