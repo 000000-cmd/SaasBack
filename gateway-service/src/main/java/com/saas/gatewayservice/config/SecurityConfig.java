@@ -14,18 +14,15 @@ import java.util.List;
 
 /**
  * Configuración de seguridad para Spring Cloud Gateway
- * Desactiva la autenticación de Spring Security ya que usamos JWT custom
+ * La autenticación real se maneja con filtros JWT custom
  */
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
-    /**
-     * Configuración de seguridad principal
-     * Permite todas las peticiones - la autenticación se maneja en AuthenticationFilter
-     */
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+
         http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -39,25 +36,24 @@ public class SecurityConfig {
     }
 
     /**
-     * Configuración CORS para permitir peticiones desde frontend
+     * CORS SOLO para el cliente (browser)
+     * Mientras NO tengas dominio → modo DEV
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Orígenes permitidos (ajustar según tu frontend)
+        // Permitir cualquier origen (DEV)
         configuration.setAllowedOriginPatterns(List.of("*"));
 
-        // Métodos HTTP permitidos
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedMethods(
+                Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+        );
 
-        // Headers permitidos
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(List.of("*"));
 
-        // Permitir credenciales (cookies, auth headers)
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(false);
 
-        // Headers expuestos al cliente
         configuration.setExposedHeaders(Arrays.asList(
                 "Authorization",
                 "X-User-Username",
@@ -65,12 +61,12 @@ public class SecurityConfig {
                 "X-User-Roles"
         ));
 
-        // Tiempo de cache de la configuración CORS (1 hora)
         configuration.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
 
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }
