@@ -17,6 +17,7 @@
 .env.local
 .env.production
 .env.*.local
+.credentials.conf
 
 # Logs
 *.log
