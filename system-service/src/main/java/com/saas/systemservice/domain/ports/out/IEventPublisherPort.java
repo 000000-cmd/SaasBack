@@ -1,0 +1,7 @@
+package com.saas.systemservice.domain.ports.out;
+
+import com.saas.systemservice.domain.model.Constant;
+
+public interface IEventPublisherPort {
+    void publishConstantUpdated(Constant constant);
+}
