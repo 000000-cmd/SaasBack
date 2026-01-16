@@ -22,7 +22,6 @@ public class SecurityConfig {
 
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
-
         http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -35,26 +34,26 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * CORS SOLO para el cliente (browser)
-     * Mientras NO tengas dominio → modo DEV
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Permitir cualquier origen (DEV)
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        // 🔴 ORÍGENES EXPLÍCITOS (NO *)
+        configuration.setAllowedOrigins(List.of(
+                "http://72.62.174.193:8080",
+                "http://localhost:8080",
+                "http://127.0.0.1:8080"
+        ));
 
-        configuration.setAllowedMethods(
-                Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
-        );
+        configuration.setAllowedMethods(List.of(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
+        ));
 
         configuration.setAllowedHeaders(List.of("*"));
 
-        configuration.setAllowCredentials(false);
+        configuration.setAllowCredentials(true);
 
-        configuration.setExposedHeaders(Arrays.asList(
+        configuration.setExposedHeaders(List.of(
                 "Authorization",
                 "X-User-Username",
                 "X-User-Id",
@@ -65,8 +64,8 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
-
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 }
