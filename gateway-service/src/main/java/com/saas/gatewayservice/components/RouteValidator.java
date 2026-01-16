@@ -6,22 +6,17 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.function.Predicate;
 
-/**
- * Validador de rutas para determinar qué endpoints requieren autenticación
- */
 @Component
 public class RouteValidator {
 
     private static final Logger log = LoggerFactory.getLogger(RouteValidator.class);
 
     /**
-     * Lista de endpoints públicos que NO requieren autenticación
-     * Incluye patrones completos con prefijos de servicios
+     * Lista de paths públicos que NO requieren autenticación
      */
     public static final List<String> PUBLIC_ENDPOINTS = List.of(
-            // Auth service endpoints
+            // Auth service - login, register, refresh
             "/auth-service/api/auth/login",
             "/auth-service/api/auth/refresh",
             "/auth-service/api/auth/register",
@@ -31,49 +26,51 @@ public class RouteValidator {
             "/api/auth/register",
             "/api/auth/apiV",
 
-            // Third parties
-            "/api/thirdparties/create",
-            "/thirdparties-service/api/thirdparties/create",
-
-            // Eureka
-            "/eureka",
-
-            // Actuator endpoints (todos los servicios)
+            // Actuator endpoints
             "/actuator/health",
             "/actuator/info",
             "/auth-service/actuator/health",
             "/auth-service/actuator/info",
             "/system-service/actuator/health",
-            "/system-service/actuator/info"
+            "/system-service/actuator/info",
+            "/gateway-service/actuator/health",
+            "/gateway-service/actuator/info",
+
+            // Eureka
+            "/eureka"
     );
 
     /**
-     * Predicado que determina si una ruta está asegurada (requiere auth)
-     * Retorna TRUE si la ruta NO está en la lista pública
+     * Verifica si una ruta requiere autenticación
      */
-    public Predicate<ServerHttpRequest> isSecured =
-            request -> PUBLIC_ENDPOINTS.stream()
-                    .noneMatch(uri -> {
-                        String path = request.getURI().getPath();
-                        boolean matches = path.contains(uri);
-                        if (matches) {
-                            log.debug("Public endpoint accessed: {}", path);
-                        }
-                        return matches;
-                    });
+    public boolean requiresAuthentication(ServerHttpRequest request) {
+        String path = request.getURI().getPath();
+        String method = request.getMethod().name();
+
+        // Permitir siempre OPTIONS para CORS preflight
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            log.debug("OPTIONS request detected - allowing without auth: {}", path);
+            return false;
+        }
+
+        // Verificar si es un endpoint público
+        boolean isPublic = PUBLIC_ENDPOINTS.stream()
+                .anyMatch(publicPath -> path.equals(publicPath) || path.startsWith(publicPath));
+
+        if (isPublic) {
+            log.debug("Public endpoint detected: {} {}", method, path);
+            return false;
+        }
+
+        log.debug("Secured endpoint detected: {} {}", method, path);
+        return true;
+    }
 
     /**
      * Verifica si una ruta específica es pública
      */
     public boolean isPublicEndpoint(String path) {
         return PUBLIC_ENDPOINTS.stream()
-                .anyMatch(path::contains);
-    }
-
-    /**
-     * Verifica si una ruta requiere autenticación
-     */
-    public boolean requiresAuthentication(ServerHttpRequest request) {
-        return isSecured.test(request);
+                .anyMatch(publicPath -> path.equals(publicPath) || path.startsWith(publicPath));
     }
 }

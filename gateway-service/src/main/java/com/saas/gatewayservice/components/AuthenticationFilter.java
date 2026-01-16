@@ -20,10 +20,6 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-/**
- * Filtro global de autenticación para Spring Cloud Gateway
- * Valida tokens JWT en todas las peticiones excepto endpoints públicos
- */
 @Component
 @RefreshScope
 public class AuthenticationFilter implements GlobalFilter, Ordered {
@@ -41,100 +37,101 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
+        String method = request.getMethod().name();
 
-        log.debug("Processing request to: {}", path);
+        log.info("🔍 Gateway Filter -> {} {}", method, path);
 
-        // Si es una ruta pública, continuar sin validación
+        // Verificar si requiere autenticación
         if (!routeValidator.requiresAuthentication(request)) {
-            log.debug("Public endpoint accessed, skipping authentication: {}", path);
+            log.info("✅ Public endpoint -> {} {}", method, path);
             return chain.filter(exchange);
         }
 
+        log.info("🔒 Secured endpoint -> {} {}", method, path);
+
         // Validar presencia del header Authorization
         if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
-            log.warn("Missing Authorization header for secured endpoint: {}", path);
+            log.warn("❌ Missing Authorization header -> {} {}", method, path);
             return onError(exchange, "Missing Authorization header", HttpStatus.UNAUTHORIZED);
         }
 
         // Extraer token
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
-            log.warn("Invalid Authorization header format: {}", authHeader);
+            log.warn("❌ Invalid Authorization format -> {} {}", method, path);
             return onError(exchange, "Invalid Authorization header format", HttpStatus.UNAUTHORIZED);
         }
 
         String token = authHeader.substring(BEARER_PREFIX.length());
+        log.debug("Token extracted: {}...", token.substring(0, Math.min(20, token.length())));
 
         // Validar token
         if (!jwtUtil.validateToken(token)) {
-            log.warn("Invalid or expired token for path: {}", path);
+            log.warn("❌ Invalid/Expired token -> {} {}", method, path);
             return onError(exchange, "Invalid or expired token", HttpStatus.UNAUTHORIZED);
         }
 
         try {
-            // Extraer claims y agregar headers personalizados
+            // Extraer claims
             Claims claims = jwtUtil.extractAllClaims(token);
             String username = claims.getSubject();
+            Object userId = claims.get("userId");
 
-            log.debug("Token validated successfully for user: {}", username);
+            log.info("✅ Token validated -> User: {} (ID: {}) on {} {}", username, userId, method, path);
 
-            // Construir el request modificado con headers personalizados
+            // Construir request modificado con headers
             ServerHttpRequest.Builder requestBuilder = exchange.getRequest().mutate()
                     .header("X-User-Username", username);
 
-            // Agregar userId si existe
-            Object userId = claims.get("userId");
             if (userId != null) {
                 requestBuilder.header("X-User-Id", userId.toString());
             }
 
-            // Agregar roles si existen (puede ser una lista)
             Object roles = claims.get("roles");
             if (roles != null) {
                 if (roles instanceof List) {
-                    // Si es una lista, convertir a string separado por comas
                     String rolesStr = String.join(",", (List<String>) roles);
                     requestBuilder.header("X-User-Roles", rolesStr);
+                    log.debug("User roles: {}", rolesStr);
                 } else {
-                    // Si es un string simple
                     requestBuilder.header("X-User-Roles", roles.toString());
+                    log.debug("User roles: {}", roles);
                 }
             }
 
             ServerHttpRequest modifiedRequest = requestBuilder.build();
-
             return chain.filter(exchange.mutate().request(modifiedRequest).build());
 
         } catch (Exception e) {
-            log.error("Error processing token: {}", e.getMessage(), e);
+            log.error("❌ Error processing token -> {} {}: {}", method, path, e.getMessage());
             return onError(exchange, "Error processing authentication token", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    /**
-     * Maneja errores de autenticación con respuesta JSON
-     */
     private Mono<Void> onError(ServerWebExchange exchange, String message, HttpStatus status) {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(status);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
+        String path = exchange.getRequest().getURI().getPath();
+        String method = exchange.getRequest().getMethod().name();
+
         String errorBody = String.format(
-                "{\"error\":\"%s\",\"message\":\"%s\",\"status\":%d}",
+                "{\"error\":\"%s\",\"message\":\"%s\",\"status\":%d,\"path\":\"%s\",\"method\":\"%s\",\"timestamp\":\"%s\"}",
                 status.getReasonPhrase(),
                 message,
-                status.value()
+                status.value(),
+                path,
+                method,
+                java.time.Instant.now().toString()
         );
 
         byte[] bytes = errorBody.getBytes(StandardCharsets.UTF_8);
         return response.writeWith(Mono.just(response.bufferFactory().wrap(bytes)));
     }
 
-    /**
-     * Prioridad del filtro: -1 para ejecutarse antes que otros filtros
-     */
     @Override
     public int getOrder() {
-        return -1;
+        return -1; // Ejecutar antes que otros filtros
     }
 }
