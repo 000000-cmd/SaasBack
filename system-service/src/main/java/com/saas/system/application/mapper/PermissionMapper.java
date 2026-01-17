@@ -15,11 +15,6 @@ import org.mapstruct.Mapping;
 public interface PermissionMapper extends IRequestMapper<Permission, PermissionRequest>, IResponseMapper<Permission, PermissionResponse> {
 
     @Override
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "enabled", ignore = true)
-    @Mapping(target = "visible", ignore = true)
-    @Mapping(target = "auditUser", ignore = true)
-    @Mapping(target = "auditDate", ignore = true)
     Permission toDomain(PermissionRequest request);
 
     @Override

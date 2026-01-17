@@ -15,11 +15,6 @@ import org.mapstruct.Mapping;
 public interface ConstantMapper extends IRequestMapper<Constant, ConstantRequest>, IResponseMapper<Constant, ConstantResponse> {
 
     @Override
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "enabled", ignore = true)
-    @Mapping(target = "visible", ignore = true)
-    @Mapping(target = "auditUser", ignore = true)
-    @Mapping(target = "auditDate", ignore = true)
     Constant toDomain(ConstantRequest request);
 
     @Override

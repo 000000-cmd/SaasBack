@@ -15,11 +15,6 @@ import org.mapstruct.Mapping;
 public interface RoleMapper extends IRequestMapper<Role, RoleRequest>, IResponseMapper<Role, RoleResponse> {
 
     @Override
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "enabled", ignore = true)
-    @Mapping(target = "visible", ignore = true)
-    @Mapping(target = "auditUser", ignore = true)
-    @Mapping(target = "auditDate", ignore = true)
     Role toDomain(RoleRequest request);
 
     @Override
