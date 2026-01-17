@@ -76,6 +76,6 @@ public abstract class BaseInfoController {
         if (buildProperties != null) {
             return buildProperties.getVersion();
         }
-        return "1.0.0-SNAPSHOT";
+        return "No version";
     }
 }
