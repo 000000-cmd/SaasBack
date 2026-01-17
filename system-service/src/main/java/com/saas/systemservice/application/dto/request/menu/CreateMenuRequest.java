@@ -29,5 +29,5 @@ public class CreateMenuRequest {
     @Min(value = 0, message = "El orden debe ser un número positivo")
     private Integer order;
 
-    private String parentId; // Opcional (puede ser null si es raíz)
+    private String parentId;
 }

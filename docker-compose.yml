@@ -1,9 +1,18 @@
-version: '3.8'
+# ============================================
+# DOCKER COMPOSE - SAAS PLATFORM
+# Linea Base para Microservicios
+# ============================================
+# Optimizaciones:
+# - Health checks con tiempos razonables
+# - Dependencias correctas
+# - Variables de entorno centralizadas
+# - Logging configurado
+# ============================================
 
 services:
 
   # ===========================================
-  # MYSQL
+  # CAPA 1: BASE DE DATOS
   # ===========================================
   mysql:
     image: mysql:8.4
@@ -12,17 +21,20 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
-      TZ: ${TZ}
+      TZ: ${TZ:-America/Bogota}
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init-scripts:/docker-entrypoint-initdb.d
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
     command: >
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
-      --max_connections=150
+      --max_connections=200
       --innodb_buffer_pool_size=512M
+      --innodb_log_file_size=128M
+      --slow_query_log=1
+      --long_query_time=2
     networks:
       - saas-network
     healthcheck:
@@ -31,24 +43,32 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ===========================================
-  # CONFIG SERVER
+  # CAPA 2: CONFIG SERVER
   # ===========================================
   config-server:
     build:
       context: .
       dockerfile: Dockerfile
       target: config-server
-      # Forzar rebuild sin caché
-      args:
-        BUILDKIT_INLINE_CACHE: 0
     image: saas-config-server:latest
     container_name: saas-config-server
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: native
       SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config
+      JAVA_OPTS: >-
+        -Xms128m
+        -Xmx256m
+        -XX:+UseG1GC
+        -XX:+UseContainerSupport
+        -Djava.security.egd=file:/dev/./urandom
     ports:
       - "8888:8888"
     volumes:
@@ -59,25 +79,34 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
       interval: 10s
       timeout: 5s
-      retries: 15
-      start_period: 45s
+      retries: 12
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ===========================================
-  # DISCOVERY SERVICE
+  # CAPA 2: DISCOVERY SERVICE (EUREKA)
   # ===========================================
   discovery-service:
     build:
       context: .
       dockerfile: Dockerfile
       target: discovery-service
-      args:
-        BUILDKIT_INLINE_CACHE: 0
     image: saas-discovery:latest
     container_name: saas-discovery
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: default
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      JAVA_OPTS: >-
+        -Xms128m
+        -Xmx384m
+        -XX:+UseG1GC
+        -XX:+UseContainerSupport
+        -Djava.security.egd=file:/dev/./urandom
     ports:
       - "8761:8761"
     networks:
@@ -89,31 +118,39 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
       interval: 10s
       timeout: 5s
-      retries: 20
-      start_period: 60s
+      retries: 15
+      start_period: 50s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ===========================================
-  # AUTH SERVICE
+  # CAPA 3: AUTH SERVICE
   # ===========================================
   auth-service:
     build:
       context: .
       dockerfile: Dockerfile
       target: auth-service
-      args:
-        BUILDKIT_INLINE_CACHE: 0
     image: saas-auth:latest
     container_name: saas-auth
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: default
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
-      # Aumentar timeout de inicio
-      JAVA_OPTS: "-Xms128m -Xmx512m -XX:+UseG1GC"
+      JAVA_OPTS: >-
+        -Xms256m
+        -Xmx512m
+        -XX:+UseG1GC
+        -XX:+UseContainerSupport
+        -XX:MaxGCPauseMillis=100
+        -Djava.security.egd=file:/dev/./urandom
     ports:
       - "8082:8082"
     networks:
@@ -129,30 +166,39 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
       interval: 15s
       timeout: 10s
-      retries: 20
-      start_period: 90s
+      retries: 15
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
 
   # ===========================================
-  # SYSTEM SERVICE
+  # CAPA 3: SYSTEM SERVICE
   # ===========================================
   system-service:
     build:
       context: .
       dockerfile: Dockerfile
       target: system-service
-      args:
-        BUILDKIT_INLINE_CACHE: 0
     image: saas-system:latest
     container_name: saas-system
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: default
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
-      JAVA_OPTS: "-Xms128m -Xmx512m -XX:+UseG1GC"
+      JAVA_OPTS: >-
+        -Xms256m
+        -Xmx512m
+        -XX:+UseG1GC
+        -XX:+UseContainerSupport
+        -XX:MaxGCPauseMillis=100
+        -Djava.security.egd=file:/dev/./urandom
     ports:
       - "8083:8083"
     networks:
@@ -168,19 +214,22 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
       interval: 15s
       timeout: 10s
-      retries: 20
-      start_period: 90s
+      retries: 15
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
 
   # ===========================================
-  # GATEWAY SERVICE
+  # CAPA 4: GATEWAY SERVICE
   # ===========================================
   gateway-service:
     build:
       context: .
       dockerfile: Dockerfile
       target: gateway-service
-      args:
-        BUILDKIT_INLINE_CACHE: 0
     image: saas-gateway:latest
     container_name: saas-gateway
     restart: unless-stopped
@@ -188,7 +237,13 @@ services:
       SPRING_PROFILES_ACTIVE: default
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
-      JAVA_OPTS: "-Xms128m -Xmx512m -XX:+UseG1GC"
+      JAVA_OPTS: >-
+        -Xms256m
+        -Xmx512m
+        -XX:+UseG1GC
+        -XX:+UseContainerSupport
+        -Djava.security.egd=file:/dev/./urandom
+        -Dreactor.netty.http.server.accessLogEnabled=true
     ports:
       - "8080:8080"
     networks:
@@ -199,20 +254,35 @@ services:
       discovery-service:
         condition: service_healthy
       auth-service:
-        condition: service_started
+        condition: service_healthy
       system-service:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 10s
       timeout: 5s
-      retries: 20
-      start_period: 90s
+      retries: 15
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
 
+# ===========================================
+# NETWORKS
+# ===========================================
 networks:
   saas-network:
     driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
 
+# ===========================================
+# VOLUMES
+# ===========================================
 volumes:
   mysql_data:
     driver: local

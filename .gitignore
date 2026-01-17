@@ -1,47 +1,149 @@
-# Maven
+# ============================================
+# GITIGNORE - SAAS PLATFORM
+# ============================================
+
+# ===========================================
+# MAVEN
+# ===========================================
 **/target/
 !.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
 
-# IDE
+# ===========================================
+# IDE - IntelliJ IDEA
+# ===========================================
 .idea/
 *.iws
 *.iml
 *.ipr
+out/
+.idea_modules/
+
+# ===========================================
+# IDE - Eclipse
+# ===========================================
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# ===========================================
+# IDE - VSCode
+# ===========================================
 .vscode/
+*.code-workspace
+.history/
+
+# ===========================================
+# IDE - NetBeans
+# ===========================================
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ===========================================
+# VARIABLES DE ENTORNO
+# ===========================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+*.credentials
+*.secrets
+.credentials.conf
+
+# ===========================================
+# DOCKER
+# ===========================================
+# No ignorar docker-compose.yml ni Dockerfile
+mysql_data/
+redis_data/
+*.tar
+
+# ===========================================
+# LOGS
+# ===========================================
+*.log
+logs/
+/var/log/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===========================================
+# SISTEMA OPERATIVO
+# ===========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 *.swp
 *.swo
 *~
 
-# Variables de entorno - IMPORTANTE
-.env
-.env.local
-.env.production
-.env.*.local
-.credentials.conf
-
-# Logs
-*.log
-logs/
-/var/log/*.log
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Backups
+# ===========================================
+# BACKUPS
+# ===========================================
 /opt/saas-backups/
 *.sql
 *.sql.gz
+*.bak
+*.backup
 
-# Docker volumes
-mysql_data/
+# ===========================================
+# TESTING
+# ===========================================
+/coverage/
+*.lcov
+.nyc_output/
 
-# Testing
-**/src/test/
-**/*.test.*
-**/*.spec.*
-
-# Temporal
+# ===========================================
+# TEMPORALES
+# ===========================================
 *.tmp
 *.temp
 .cache/
+tmp/
+temp/
+
+# ===========================================
+# SEGURIDAD
+# ===========================================
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+id_rsa
+id_rsa.pub
+*.keystore
+
+# ===========================================
+# NODE (si aplica para frontend)
+# ===========================================
+node_modules/
+package-lock.json
+yarn.lock
+.npm/

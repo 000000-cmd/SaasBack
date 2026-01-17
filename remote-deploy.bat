@@ -4,91 +4,144 @@ setlocal enabledelayedexpansion
 
 REM ============================================
 REM REMOTE DEPLOYMENT - WINDOWS
-REM Despliega usando password (SSH keys no soportadas bien en Windows)
+REM Despliega usando password (o plink para automatizar)
+REM ============================================
+REM Uso:
+REM   remote-deploy.bat              - Deploy normal
+REM   remote-deploy.bat --status     - Ver estado
+REM   remote-deploy.bat --logs       - Ver logs
 REM ============================================
 
 echo.
-echo ╔═══════════════════════════════════════════╗
-echo ║   🚀 REMOTE DEPLOYMENT - WINDOWS          ║
-echo ║   Password-based SSH                      ║
-echo ╚═══════════════════════════════════════════╝
+echo ================================================================
+echo    REMOTE DEPLOYMENT - SAAS PLATFORM (Windows)
+echo ================================================================
 echo.
 
 REM ============================================
-REM CARGAR CONFIGURACIÓN
+REM CARGAR CONFIGURACION
 REM ============================================
 
 set CONFIG_FILE=deploy-config.env
 
 if not exist "%CONFIG_FILE%" (
-    echo ❌ No se encontró: %CONFIG_FILE%
+    echo [ERROR] No se encontro: %CONFIG_FILE%
     echo.
-    echo 📝 Creando configuración por defecto...
+    echo Creando configuracion por defecto...
 
     (
-    echo # Ver deploy-config.env completo en artifacts anteriores
-    echo VPS_HOST=72.62.174.193
+    echo # Configuracion de deployment
+    echo VPS_HOST=tu-servidor.com
     echo VPS_USER=root
-    echo VPS_PASSWORD=H;v1c-#-b,9DlzMRj;L3
+    echo VPS_PASSWORD=tu_password_aqui
     echo VPS_PATH=/opt/saas-platform
     echo VPS_SSH_PORT=22
-    echo.
-    echo DEPLOY_MYSQL=true
-    echo DEPLOY_CONFIG_SERVER=true
-    echo SERVICE_PORT_CONFIG_SERVER=8888
-    echo DEPLOY_DISCOVERY_SERVICE=true
-    echo SERVICE_PORT_DISCOVERY_SERVICE=8761
-    echo DEPLOY_AUTH_SERVICE=true
-    echo SERVICE_PORT_AUTH_SERVICE=8082
-    echo DEPLOY_SYSTEM_SERVICE=true
-    echo SERVICE_PORT_SYSTEM_SERVICE=8083
-    echo DEPLOY_GATEWAY_SERVICE=true
-    echo SERVICE_PORT_GATEWAY_SERVICE=8080
     echo.
     echo FORCE_REBUILD=false
     echo SKIP_BACKUP=false
     echo AUTO_PULL=true
     echo GIT_BRANCH=main
-    echo SHOW_LOGS=true
     ) > "%CONFIG_FILE%"
 
-    echo ✅ Archivo creado: %CONFIG_FILE%
-    echo.
-    set /p EDIT="¿Editar ahora? (s/n): "
-    if /i "!EDIT!"=="s" notepad "%CONFIG_FILE%"
+    echo Archivo creado: %CONFIG_FILE%
+    echo Por favor, edita el archivo con tu configuracion
+    pause
+    exit /b 1
 )
 
-REM Cargar variables
+REM Cargar variables del archivo de configuracion
 for /f "tokens=1,2 delims==" %%a in ('type "%CONFIG_FILE%" ^| findstr /v "^#" ^| findstr "="') do (
-    set KEY=%%a
-    set VALUE=%%b
-    set KEY=!KEY: =!
-    set VALUE=!VALUE: =!
+    set "KEY=%%a"
+    set "VALUE=%%b"
+    REM Limpiar espacios
+    set "KEY=!KEY: =!"
+    for /f "tokens=* delims= " %%c in ("!VALUE!") do set "VALUE=%%c"
 
-    if "!KEY!"=="VPS_HOST" set VPS_HOST=!VALUE!
-    if "!KEY!"=="VPS_USER" set VPS_USER=!VALUE!
-    if "!KEY!"=="VPS_PASSWORD" set VPS_PASSWORD=!VALUE!
-    if "!KEY!"=="VPS_PATH" set VPS_PATH=!VALUE!
-    if "!KEY!"=="VPS_SSH_PORT" set VPS_SSH_PORT=!VALUE!
+    if "!KEY!"=="VPS_HOST" set "VPS_HOST=!VALUE!"
+    if "!KEY!"=="VPS_USER" set "VPS_USER=!VALUE!"
+    if "!KEY!"=="VPS_PASSWORD" set "VPS_PASSWORD=!VALUE!"
+    if "!KEY!"=="VPS_PATH" set "VPS_PATH=!VALUE!"
+    if "!KEY!"=="VPS_SSH_PORT" set "VPS_SSH_PORT=!VALUE!"
 )
 
-REM Validar
+REM Validar configuracion
 if not defined VPS_HOST (
-    echo ❌ VPS_HOST no definido en %CONFIG_FILE%
+    echo [ERROR] VPS_HOST no definido en %CONFIG_FILE%
     pause
     exit /b 1
 )
 
 if not defined VPS_PASSWORD (
-    echo ❌ VPS_PASSWORD no definido en %CONFIG_FILE%
+    echo [ERROR] VPS_PASSWORD no definido en %CONFIG_FILE%
+    echo En Windows se requiere el password para conexion SSH
     pause
     exit /b 1
 )
 
-echo ✅ Configuración cargada
-echo    Host: %VPS_HOST%
-echo    User: %VPS_USER%
+if not defined VPS_SSH_PORT set VPS_SSH_PORT=22
+
+echo [OK] Configuracion cargada
+echo     Host: %VPS_HOST%
+echo     User: %VPS_USER%
+echo     Path: %VPS_PATH%
 echo.
+
+REM ============================================
+REM PROCESAR ARGUMENTOS
+REM ============================================
+
+if "%1"=="--status" goto :show_status
+if "%1"=="--logs" goto :show_logs
+if "%1"=="--help" goto :show_help
+if "%1"=="-h" goto :show_help
+
+REM Si no hay argumentos, ejecutar deployment
+goto :run_deployment
+
+REM ============================================
+REM FUNCIONES
+REM ============================================
+
+:show_help
+echo Uso: %~nx0 [opcion]
+echo.
+echo Opciones:
+echo   (sin argumentos)   Ejecutar deployment completo
+echo   --status           Ver estado de servicios
+echo   --logs             Ver logs de todos los servicios
+echo   --help, -h         Mostrar esta ayuda
+echo.
+goto :eof
+
+:show_status
+echo.
+echo Consultando estado de servicios...
+echo.
+
+where plink >nul 2>&1
+if %errorlevel% equ 0 (
+    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% -P %VPS_SSH_PORT% "cd %VPS_PATH% && docker compose ps"
+) else (
+    echo [INFO] Se pedira el password: %VPS_PASSWORD%
+    ssh -p %VPS_SSH_PORT% %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && docker compose ps"
+)
+goto :eof
+
+:show_logs
+echo.
+echo Mostrando logs (Ctrl+C para salir)...
+echo.
+
+where plink >nul 2>&1
+if %errorlevel% equ 0 (
+    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% -P %VPS_SSH_PORT% "cd %VPS_PATH% && docker compose logs -f --tail=100"
+) else (
+    echo [INFO] Se pedira el password: %VPS_PASSWORD%
+    ssh -p %VPS_SSH_PORT% %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && docker compose logs -f --tail=100"
+)
+goto :eof
+
+:run_deployment
 
 REM ============================================
 REM VERIFICAR OPENSSH
@@ -96,91 +149,99 @@ REM ============================================
 
 where ssh >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ❌ ERROR: OpenSSH no instalado
+    echo [ERROR] OpenSSH no esta instalado
     echo.
-    echo 💡 Instala OpenSSH Client desde:
-    echo    Configuración ^> Aplicaciones ^> Características opcionales
+    echo Instala OpenSSH Client desde:
+    echo   Configuracion ^> Aplicaciones ^> Caracteristicas opcionales
+    echo.
+    echo O instala PuTTY/plink para automatizar con password
     pause
     exit /b 1
 )
 
-echo ✅ OpenSSH encontrado
+echo [OK] OpenSSH encontrado
 echo.
 
 REM ============================================
 REM DETECTAR SERVICIOS
 REM ============================================
 
-echo 📋 Detectando servicios habilitados...
+echo Detectando servicios habilitados...
 set SERVICE_COUNT=0
 
 for /f "tokens=1,2 delims==" %%a in ('type "%CONFIG_FILE%" ^| findstr /B "DEPLOY_"') do (
-    set KEY=%%a
-    set VALUE=%%b
-    set VALUE=!VALUE: =!
-    set VALUE=!VALUE:"=!
+    set "KEY=%%a"
+    set "VALUE=%%b"
+    set "VALUE=!VALUE: =!"
+    set "VALUE=!VALUE:"=!"
 
     if /i "!VALUE!"=="true" (
         set /a SERVICE_COUNT+=1
-        echo    ✓ !KEY!
+        echo    [x] !KEY!
     )
 )
 
 if %SERVICE_COUNT% equ 0 (
-    echo ❌ No hay servicios habilitados
+    echo [ERROR] No hay servicios habilitados
     pause
     exit /b 1
 )
 
 echo.
-echo 📊 Total: %SERVICE_COUNT% servicios
+echo Total: %SERVICE_COUNT% servicios
 echo.
 
-set /p CONFIRM="¿Continuar? (s/n): "
+set /p CONFIRM="Continuar con el deployment? (s/n): "
 if /i not "%CONFIRM%"=="s" (
-    echo ❌ Cancelado
+    echo Deployment cancelado
     exit /b 0
 )
 
 REM ============================================
-REM MÉTODO: PLINK (si está disponible)
+REM DETECTAR PLINK PARA AUTOMATIZACION
 REM ============================================
 
 where plink >nul 2>&1
 if %errorlevel% equ 0 (
     set USE_PLINK=true
-    echo ✅ Usando plink para automatizar password
+    echo [OK] Usando plink para automatizar password
 ) else (
     set USE_PLINK=false
-    echo ℹ️  plink no disponible, se usará método interactivo
+    echo [INFO] plink no disponible, se usara metodo interactivo
+    echo.
+    echo ================================================================
+    echo    SE PEDIRA PASSWORD VARIAS VECES
+    echo    Password: %VPS_PASSWORD%
+    echo ================================================================
+    echo.
+    pause
 )
 
 REM ============================================
-REM VERIFICAR CONEXIÓN
+REM VERIFICAR CONEXION
 REM ============================================
 
 echo.
-echo 1️⃣  Verificando conexión...
+echo [1/4] Verificando conexion...
 
 if "%USE_PLINK%"=="true" (
-    echo | set /p="Probando con plink... "
-    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% "echo OK" >nul 2>&1
+    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% -P %VPS_SSH_PORT% "echo OK" >nul 2>&1
     if %errorlevel% equ 0 (
-        echo ✅ OK
+        echo [OK] Conexion verificada
     ) else (
-        echo ⚠️  Falló, usando SSH interactivo
-        set USE_PLINK=false
+        echo [ERROR] No se pudo conectar
+        echo Verifica host, usuario y password
+        pause
+        exit /b 1
     )
-)
-
-if "%USE_PLINK%"=="false" (
-    echo.
-    echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    echo ⚠️  SE PEDIRÁ PASSWORD DEL VPS VARIAS VECES
-    echo    Password: %VPS_PASSWORD%
-    echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    echo.
-    pause
+) else (
+    echo Verificando conexion (password: %VPS_PASSWORD%)
+    ssh -p %VPS_SSH_PORT% %VPS_USER%@%VPS_HOST% "echo OK"
+    if %errorlevel% neq 0 (
+        echo [ERROR] No se pudo conectar
+        pause
+        exit /b 1
+    )
 )
 
 REM ============================================
@@ -188,53 +249,59 @@ REM SUBIR ARCHIVOS
 REM ============================================
 
 echo.
-echo 2️⃣  Subiendo archivos...
+echo [2/4] Subiendo archivos...
 
 if "%USE_PLINK%"=="true" (
-    echo    📤 deploy-config.env...
-    pscp -batch -pw %VPS_PASSWORD% "%CONFIG_FILE%" %VPS_USER%@%VPS_HOST%:%VPS_PATH%/ >nul
+    echo    Subiendo deploy-config.env...
+    pscp -batch -pw %VPS_PASSWORD% -P %VPS_SSH_PORT% "%CONFIG_FILE%" %VPS_USER%@%VPS_HOST%:%VPS_PATH%/
 
-    echo    📤 deploy.sh...
-    pscp -batch -pw %VPS_PASSWORD% deploy.sh %VPS_USER%@%VPS_HOST%:%VPS_PATH%/ >nul
+    if exist deploy.sh (
+        echo    Subiendo deploy.sh...
+        pscp -batch -pw %VPS_PASSWORD% -P %VPS_SSH_PORT% deploy.sh %VPS_USER%@%VPS_HOST%:%VPS_PATH%/
+    )
 ) else (
-    echo    📤 deploy-config.env...
-    echo    (Password: %VPS_PASSWORD%)
-    scp "%CONFIG_FILE%" %VPS_USER%@%VPS_HOST%:%VPS_PATH%/
+    echo    Subiendo deploy-config.env (password: %VPS_PASSWORD%)
+    scp -P %VPS_SSH_PORT% "%CONFIG_FILE%" %VPS_USER%@%VPS_HOST%:%VPS_PATH%/
 
-    echo.
-    echo    📤 deploy.sh...
-    echo    (Password: %VPS_PASSWORD%)
-    scp deploy.sh %VPS_USER%@%VPS_HOST%:%VPS_PATH%/
+    if exist deploy.sh (
+        echo    Subiendo deploy.sh (password: %VPS_PASSWORD%)
+        scp -P %VPS_SSH_PORT% deploy.sh %VPS_USER%@%VPS_HOST%:%VPS_PATH%/
+    )
 )
 
-echo ✅ Archivos subidos
+echo [OK] Archivos subidos
+echo.
+
+REM ============================================
+REM CONFIGURAR PERMISOS
+REM ============================================
+
+echo [3/4] Configurando permisos...
+
+if "%USE_PLINK%"=="true" (
+    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% -P %VPS_SSH_PORT% "cd %VPS_PATH% && chmod +x deploy.sh"
+) else (
+    ssh -p %VPS_SSH_PORT% %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && chmod +x deploy.sh"
+)
+
+echo [OK] Permisos configurados
 echo.
 
 REM ============================================
 REM EJECUTAR DEPLOYMENT
 REM ============================================
 
-echo 3️⃣  Configurando permisos...
-
-if "%USE_PLINK%"=="true" (
-    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && chmod +x deploy.sh" >nul
-) else (
-    ssh %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && chmod +x deploy.sh"
-)
-
-echo ✅ Permisos OK
+echo [4/4] Ejecutando deployment en VPS...
 echo.
-
-echo ╔═══════════════════════════════════════════╗
-echo ║   🚀 EJECUTANDO DEPLOYMENT EN VPS         ║
-echo ╚═══════════════════════════════════════════╝
+echo ================================================================
+echo    EJECUTANDO DEPLOYMENT EN VPS
+echo ================================================================
 echo.
 
 if "%USE_PLINK%"=="true" (
-    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && ./deploy.sh"
+    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% -P %VPS_SSH_PORT% "cd %VPS_PATH% && ./deploy.sh"
 ) else (
-    echo (Password: %VPS_PASSWORD%)
-    ssh %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && ./deploy.sh"
+    ssh -p %VPS_SSH_PORT% %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && ./deploy.sh"
 )
 
 set DEPLOY_EXIT=%errorlevel%
@@ -244,28 +311,20 @@ REM RESULTADO
 REM ============================================
 
 echo.
-echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo ================================================================
 
 if %DEPLOY_EXIT% equ 0 (
-    echo ╔═══════════════════════════════════════════╗
-    echo ║   ✅ DEPLOYMENT COMPLETADO                ║
-    echo ╚═══════════════════════════════════════════╝
+    echo    DEPLOYMENT COMPLETADO EXITOSAMENTE
 ) else (
-    echo ╔═══════════════════════════════════════════╗
-    echo ║   ⚠️  DEPLOYMENT CON ADVERTENCIAS         ║
-    echo ╚═══════════════════════════════════════════╝
+    echo    DEPLOYMENT COMPLETADO CON ADVERTENCIAS
 )
 
-echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo ================================================================
 echo.
-echo 📝 Comandos útiles:
+echo Comandos utiles:
+echo   Ver estado: %~nx0 --status
+echo   Ver logs:   %~nx0 --logs
 echo.
-echo 🔍 Ver logs:
-echo    ssh %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && docker compose logs -f"
-echo.
-echo 📊 Ver estado:
-echo    ssh %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && docker compose ps"
-echo.
-pause
 
+pause
 exit /b %DEPLOY_EXIT%

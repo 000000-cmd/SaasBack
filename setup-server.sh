@@ -1,39 +1,68 @@
 #!/bin/bash
 
 # ============================================
-# SCRIPT DE SETUP INICIAL DEL SERVIDOR
-# Ejecutar UNA SOLA VEZ en servidor nuevo
+# SETUP INICIAL DEL SERVIDOR - SAAS PLATFORM
+# ============================================
+# Ejecutar UNA SOLA VEZ en servidor nuevo (Ubuntu 22.04+)
+# Este script instala todas las dependencias necesarias
 # ============================================
 
-set -e
+set -euo pipefail
 
-# Colores
+# ============================================
+# COLORES
+# ============================================
+RED='\033[0;31m'
 GREEN='\033[0;32m'
-BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${BLUE}"
-cat << "EOF"
-╔═══════════════════════════════════════════╗
-║   🔧 SAAS PLATFORM - SERVER SETUP         ║
-║   Ubuntu 22.04+ con Docker                ║
-╚═══════════════════════════════════════════╝
-EOF
-echo -e "${NC}"
+# ============================================
+# FUNCIONES
+# ============================================
+log() {
+    echo -e "${GREEN}[$(date +'%H:%M:%S')]${NC} $1"
+}
 
-# Verificar que se ejecuta como root
-if [ "$EUID" -ne 0 ]; then
-    echo "❌ Este script debe ejecutarse como root (usa sudo)"
+error() {
+    echo -e "${RED}[$(date +'%H:%M:%S')] ERROR:${NC} $1"
     exit 1
+}
+
+warning() {
+    echo -e "${YELLOW}[$(date +'%H:%M:%S')] ADVERTENCIA:${NC} $1"
+}
+
+# ============================================
+# VERIFICAR ROOT
+# ============================================
+if [ "$EUID" -ne 0 ]; then
+    error "Este script debe ejecutarse como root (usa sudo)"
 fi
 
-echo -e "${GREEN}1️⃣  Actualizando sistema...${NC}"
-apt-get update
-apt-get upgrade -y
+# ============================================
+# BANNER
+# ============================================
+echo ""
+echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║       SETUP INICIAL - SAAS PLATFORM                          ║${NC}"
+echo -e "${CYAN}║       Ubuntu 22.04+ con Docker                               ║${NC}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
+echo ""
 
-echo -e "${GREEN}2️⃣  Instalando dependencias...${NC}"
-apt-get install -y \
+# ============================================
+# 1. ACTUALIZAR SISTEMA
+# ============================================
+log "Actualizando sistema..."
+apt-get update -qq
+apt-get upgrade -y -qq
+
+# ============================================
+# 2. INSTALAR DEPENDENCIAS BASICAS
+# ============================================
+log "Instalando dependencias basicas..."
+apt-get install -y -qq \
     ca-certificates \
     curl \
     gnupg \
@@ -41,16 +70,25 @@ apt-get install -y \
     git \
     htop \
     vim \
+    nano \
     ufw \
-    fail2ban
+    fail2ban \
+    net-tools \
+    unzip \
+    jq
 
-echo -e "${GREEN}3️⃣  Instalando Docker...${NC}"
+# ============================================
+# 3. INSTALAR DOCKER
+# ============================================
+log "Instalando Docker..."
+
 # Remover versiones antiguas
-apt-get remove -y docker docker-engine docker.io containerd runc || true
+apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
 
 # Agregar repositorio de Docker
 install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null
 chmod a+r /etc/apt/keyrings/docker.gpg
 
 echo \
@@ -59,91 +97,119 @@ echo \
   tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 # Instalar Docker
-apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+apt-get update -qq
+apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# Iniciar Docker
+# Iniciar y habilitar Docker
 systemctl start docker
 systemctl enable docker
 
-echo -e "${GREEN}4️⃣  Configurando firewall (UFW)...${NC}"
-ufw --force enable
+log "Docker instalado: $(docker --version)"
+
+# ============================================
+# 4. CONFIGURAR FIREWALL
+# ============================================
+log "Configurando firewall (UFW)..."
+
+ufw --force reset
 ufw default deny incoming
 ufw default allow outgoing
+
+# Puertos necesarios
 ufw allow 22/tcp comment "SSH"
 ufw allow 80/tcp comment "HTTP"
 ufw allow 443/tcp comment "HTTPS"
 ufw allow 8080/tcp comment "Gateway"
+ufw allow 8761/tcp comment "Eureka Dashboard"
+
+# Habilitar firewall
 echo "y" | ufw enable
 
-echo -e "${GREEN}5️⃣  Creando directorios...${NC}"
+log "Firewall configurado"
+
+# ============================================
+# 5. CREAR DIRECTORIOS
+# ============================================
+log "Creando directorios..."
+
 mkdir -p /opt/saas-platform
 mkdir -p /opt/saas-backups
 mkdir -p /var/log
 
-echo -e "${GREEN}6️⃣  Configurando Git...${NC}"
+# ============================================
+# 6. CONFIGURAR GIT Y CLONAR REPOSITORIO
+# ============================================
+log "Configurando Git..."
+
 cd /opt/saas-platform
 
-# Configurar Git si no está configurado
 if [ ! -d .git ]; then
+    echo ""
     echo -e "${YELLOW}Ingresa la URL del repositorio Git:${NC}"
-    read -p "URL: " REPO_URL
+    echo "Ejemplo: https://github.com/tu-usuario/saas-platform.git"
+    read -rp "URL: " REPO_URL
 
-    git clone "$REPO_URL" .
-
-    echo -e "${YELLOW}¿Necesitas configurar credenciales de Git? (s/n):${NC}"
-    read -p "> " SETUP_GIT
-
-    if [ "$SETUP_GIT" = "s" ]; then
-        read -p "Usuario Git: " GIT_USER
-        read -p "Email Git: " GIT_EMAIL
-        git config --global user.name "$GIT_USER"
-        git config --global user.email "$GIT_EMAIL"
-
-        echo "Para autenticación, usa Personal Access Token en lugar de password"
-        echo "GitHub: Settings > Developer settings > Personal access tokens"
+    if [ -n "$REPO_URL" ]; then
+        git clone "$REPO_URL" . || error "Error clonando repositorio"
+        log "Repositorio clonado"
+    else
+        warning "No se especifico repositorio, continuar manualmente"
     fi
 else
-    echo "Repositorio ya clonado"
+    log "Repositorio ya existe"
 fi
 
-echo -e "${GREEN}7️⃣  Configurando .env...${NC}"
+# ============================================
+# 7. CREAR ARCHIVO .ENV
+# ============================================
+log "Configurando variables de entorno..."
+
 if [ ! -f /opt/saas-platform/.env ]; then
-    cat > /opt/saas-platform/.env << 'ENVEOF'
+    cat > /opt/saas-platform/.env << 'ENVFILE'
 # ===========================================
-# BASE DE DATOS MYSQL
+# VARIABLES DE ENTORNO - SAAS PLATFORM
 # ===========================================
-MYSQL_ROOT_PASSWORD=CAMBIAR_ESTE_PASSWORD_AHORA
+# IMPORTANTE: Cambiar estos valores en produccion!
+# ===========================================
+
+# Base de datos
+MYSQL_ROOT_PASSWORD=CAMBIAR_PASSWORD_SEGURO
 MYSQL_DATABASE=saas_db
 
-# ===========================================
-# TIMEZONE
-# ===========================================
+# Timezone
 TZ=America/Bogota
-ENVEOF
+ENVFILE
 
-    echo -e "${YELLOW}⚠️  IMPORTANTE: Edita /opt/saas-platform/.env y cambia el password de MySQL${NC}"
-    echo -e "${YELLOW}nano /opt/saas-platform/.env${NC}"
+    warning "Archivo .env creado con valores por defecto"
+    warning "IMPORTANTE: Edita /opt/saas-platform/.env y cambia el password"
 else
-    echo ".env ya existe"
+    log "Archivo .env ya existe"
 fi
 
-echo -e "${GREEN}8️⃣  Configurando permisos...${NC}"
-chmod +x /opt/saas-platform/deploy.sh
-chown -R $SUDO_USER:$SUDO_USER /opt/saas-platform
+# ============================================
+# 8. CONFIGURAR PERMISOS
+# ============================================
+log "Configurando permisos..."
 
-echo -e "${GREEN}9️⃣  Configurando cron para deployment automático (opcional)...${NC}"
-echo "¿Quieres configurar deployment automático cada noche? (s/n)"
-read -p "> " SETUP_CRON
+chmod +x /opt/saas-platform/*.sh 2>/dev/null || true
+chown -R root:root /opt/saas-platform
 
-if [ "$SETUP_CRON" = "s" ]; then
-    # Backup a las 2 AM
-    (crontab -l 2>/dev/null; echo "0 2 * * * /opt/saas-platform/backup.sh >> /var/log/saas-backup.log 2>&1") | crontab -
-    echo "✅ Cron configurado"
-fi
+# ============================================
+# 9. CONFIGURAR CRON PARA BACKUPS
+# ============================================
+log "Configurando backup automatico..."
 
-echo -e "${GREEN}🔟 Configurando log rotation...${NC}"
-cat > /etc/logrotate.d/saas-platform << 'LOGEOF'
+# Agregar cron para backup diario a las 2 AM
+(crontab -l 2>/dev/null | grep -v "saas-platform/backup.sh"; echo "0 2 * * * /opt/saas-platform/backup.sh >> /var/log/saas-backup.log 2>&1") | crontab -
+
+log "Backup automatico configurado (2:00 AM diario)"
+
+# ============================================
+# 10. CONFIGURAR LOG ROTATION
+# ============================================
+log "Configurando rotacion de logs..."
+
+cat > /etc/logrotate.d/saas-platform << 'LOGROTATE'
 /var/log/saas-*.log {
     daily
     rotate 14
@@ -153,34 +219,64 @@ cat > /etc/logrotate.d/saas-platform << 'LOGEOF'
     notifempty
     create 0644 root root
 }
-LOGEOF
+LOGROTATE
 
+# ============================================
+# 11. OPTIMIZACIONES DEL SISTEMA
+# ============================================
+log "Aplicando optimizaciones del sistema..."
+
+# Aumentar limites de archivos abiertos
+cat >> /etc/security/limits.conf << 'LIMITS'
+* soft nofile 65535
+* hard nofile 65535
+root soft nofile 65535
+root hard nofile 65535
+LIMITS
+
+# Optimizaciones de red para Docker
+cat >> /etc/sysctl.conf << 'SYSCTL'
+# Optimizaciones para Docker
+net.core.somaxconn = 65535
+net.ipv4.tcp_max_syn_backlog = 65535
+net.ipv4.ip_forward = 1
+vm.max_map_count = 262144
+SYSCTL
+
+sysctl -p 2>/dev/null || true
+
+# ============================================
+# RESUMEN FINAL
+# ============================================
 echo ""
-echo -e "${GREEN}╔═══════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║   ✅ SERVIDOR CONFIGURADO EXITOSAMENTE    ║${NC}"
-echo -e "${GREEN}╚═══════════════════════════════════════════╝${NC}"
+echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║       SERVIDOR CONFIGURADO EXITOSAMENTE                      ║${NC}"
+echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo "📋 PRÓXIMOS PASOS:"
+
+IP_ADDR=$(hostname -I | awk '{print $1}')
+
+echo "PROXIMOS PASOS:"
 echo ""
-echo "1️⃣  Edita las variables de entorno:"
+echo "1. Editar variables de entorno:"
 echo "   nano /opt/saas-platform/.env"
 echo ""
-echo "2️⃣  Ejecuta el primer deployment:"
+echo "2. Ejecutar el primer deployment:"
 echo "   cd /opt/saas-platform"
 echo "   ./deploy.sh"
 echo ""
-echo "3️⃣  Verifica que todo está corriendo:"
-echo "   docker-compose ps"
-echo "   curl http://localhost:8080/actuator/health"
+echo "3. Verificar que todo funciona:"
+echo "   ./check-services.sh"
 echo ""
-echo "4️⃣  Configura tu dominio (opcional):"
-echo "   - Apunta tu dominio a: $(hostname -I | awk '{print $1}')"
-echo "   - Instala Nginx reverse proxy"
-echo "   - Configura SSL con Let's Encrypt"
+echo "4. Acceder a los servicios:"
+echo "   Gateway:  http://${IP_ADDR}:8080"
+echo "   Eureka:   http://${IP_ADDR}:8761"
 echo ""
-echo "📝 Comandos útiles:"
-echo "   Ver logs: docker-compose logs -f"
-echo "   Reiniciar: docker-compose restart"
-echo "   Detener: docker-compose down"
-echo "   Deploy: ./deploy.sh"
+echo "5. (Opcional) Configurar dominio y SSL:"
+echo "   - Apuntar tu dominio a: ${IP_ADDR}"
+echo "   - Instalar Nginx como reverse proxy"
+echo "   - Configurar SSL con Let's Encrypt"
+echo ""
+
+warning "IMPORTANTE: Cambia el password de MySQL en /opt/saas-platform/.env"
 echo ""

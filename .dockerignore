@@ -1,50 +1,105 @@
-# Maven - Solo ignorar targets compilados localmente
-**/target/
-!.mvn/wrapper/maven-wrapper.jar
+# ============================================
+# DOCKERIGNORE - SAAS PLATFORM
+# ============================================
+# Archivos excluidos del contexto de build de Docker
+# Esto acelera el build y reduce el tamano de la imagen
+# ============================================
 
+# ===========================================
+# GIT
+# ===========================================
+.git
+.gitignore
+.gitattributes
+
+# ===========================================
+# DOCUMENTACION
+# ===========================================
+README.md
+DEPLOY-README.md
+docs/
+*.md
+!**/src/**/*.md
+
+# ===========================================
 # IDE
+# ===========================================
 .idea/
-*.iws
+.vscode/
 *.iml
 *.ipr
-.vscode/
+*.iws
+.project
+.classpath
+.settings/
 *.swp
 *.swo
 *~
 
-# Git
-.git/
-.gitignore
-.gitattributes
+# ===========================================
+# MAVEN - Targets compilados localmente
+# ===========================================
+**/target/
+!.mvn/wrapper/maven-wrapper.jar
 
-# Docker - NO ignorar Dockerfiles ni docker-compose
-# Dockerfile
-# docker-compose*.yml
-.dockerignore
+# ===========================================
+# VARIABLES DE ENTORNO LOCALES
+# ===========================================
+.env.local
+.env.*.local
+.env.development
+*.credentials
 
-# Logs
+# ===========================================
+# LOGS
+# ===========================================
 *.log
 logs/
 
-# OS
+# ===========================================
+# SISTEMA OPERATIVO
+# ===========================================
 .DS_Store
 Thumbs.db
+ehthumbs.db
 
-# Documentación
-README.md
-docs/
-*.md
-
-# Variables locales
-.env.local
-.env.*.local
-
-# Testing
+# ===========================================
+# TESTING
+# ===========================================
 **/src/test/
 **/*.test.*
 **/*.spec.*
+/coverage/
 
-# Temporal
+# ===========================================
+# TEMPORALES
+# ===========================================
 *.tmp
 *.temp
 .cache/
+tmp/
+temp/
+
+# ===========================================
+# SCRIPTS DE DEPLOY (no necesarios en imagen)
+# ===========================================
+deploy.sh
+remote-deploy.sh
+remote-deploy.bat
+setup-server.sh
+backup.sh
+check-services.sh
+deploy-config.env
+
+# ===========================================
+# ARCHIVOS DOCKER (evitar recursion)
+# ===========================================
+docker-compose*.yml
+.dockerignore
+
+# ===========================================
+# BACKUPS
+# ===========================================
+*.sql
+*.sql.gz
+*.bak
