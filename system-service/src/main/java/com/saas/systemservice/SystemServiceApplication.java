@@ -10,8 +10,8 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
         "com.saas.saascommon"
 })
 @EntityScan(basePackages = {
-        "com.saasbeauty.systemservice.infrastructure.adapters.out.persistence.entity",
-        "com.saasbeauty.saasbeautycommon.persistence"
+        "com.saas.systemservice.infrastructure.adapters.out.persistence.entity",
+        "com.saas.saascommon.persistence"
 })
 public class SystemServiceApplication {
     public static void main(String[] args) {
