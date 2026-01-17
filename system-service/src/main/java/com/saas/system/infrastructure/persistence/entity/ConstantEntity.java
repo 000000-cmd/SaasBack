@@ -1,0 +1,36 @@
+package com.saas.system.infrastructure.persistence.entity;
+
+import com.saas.common.persistence.BaseEntity;
+import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.UuidGenerator;
+
+import java.util.UUID;
+
+/**
+ * Entidad JPA para Constantes.
+ */
+@Data
+@Entity
+@Table(name = "sys_constant")
+@EqualsAndHashCode(callSuper = true)
+public class ConstantEntity extends BaseEntity {
+
+    @Id
+    @UuidGenerator
+    @Column(name = "id", updatable = false, nullable = false)
+    private UUID id;
+
+    @Column(name = "code", unique = true, nullable = false, length = 50)
+    private String code;
+
+    @Column(name = "value", nullable = false, length = 500)
+    private String value;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "category", length = 100)
+    private String category;
+}

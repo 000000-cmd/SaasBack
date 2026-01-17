@@ -1,7 +1,7 @@
 package com.saas.authservice.models;
 
 
-import com.saas.saascommon.model.BaseDomain;
+import com.saas.common.model.BaseDomain;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
