@@ -36,6 +36,10 @@ public class RouteValidator {
             "/gateway-service/actuator/health",
             "/gateway-service/actuator/info",
 
+            // System-service
+            "/system-service/api/info",
+            "/system-service/api/version",
+
             // Eureka
             "/eureka"
     );
