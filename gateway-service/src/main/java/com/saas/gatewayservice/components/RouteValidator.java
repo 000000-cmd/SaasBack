@@ -20,11 +20,11 @@ public class RouteValidator {
             "/auth-service/api/auth/login",
             "/auth-service/api/auth/refresh",
             "/auth-service/api/auth/register",
-            "/auth-service/api/auth/apiV",
+            "/auth-service/api/info",
+            "/auth-service/api/version",
             "/api/auth/login",
             "/api/auth/refresh",
             "/api/auth/register",
-            "/api/auth/apiV",
 
             // Actuator endpoints
             "/actuator/health",
@@ -39,6 +39,8 @@ public class RouteValidator {
             // System-service
             "/system-service/api/info",
             "/system-service/api/version",
+            "/api/info",
+            "/api/version",
 
             // Eureka
             "/eureka"
