@@ -84,7 +84,7 @@ show_banner() {
 ║   ███████║██║  ██║██║  ██║███████║                          ║
 ║   ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝                          ║
 ║                                                              ║
-║   PLATFORM DEPLOYMENT SCRIPT v2.0                            ║
+║   PLATFORM DEPLOYMENT SCRIPT v3.0                            ║
 ║   Linea Base - Microservicios                                ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
