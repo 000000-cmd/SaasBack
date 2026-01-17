@@ -94,7 +94,6 @@ public class AuthController {
         userInfo.put("attachment", user.getAttachment());
         if (user.getRoles() != null) {
             userInfo.put("roles", user.getRoles().stream()
-                    .map(role -> role.getRole().getCode())
                     .collect(Collectors.toList()));
         } else {
             userInfo.put("roles", java.util.Collections.emptyList());
