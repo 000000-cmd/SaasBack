@@ -49,11 +49,11 @@ COPY gateway-service/ gateway-service/
 COPY auth-service/ auth-service/
 COPY system-service/ system-service/
 
-# Compilar todos los servicios
+# Compilar todos los servicios (SIN -q para ver errores)
 RUN echo "=== Compilando TODOS los servicios ===" && \
-    mvn clean package -DskipTests -B -q && \
+    mvn clean package -DskipTests -B && \
     echo "=== Compilacion completada ===" && \
-    ls -la */target/*.jar 2>/dev/null || echo "Verificando JARs..."
+    ls -la */target/*.jar
 
 # ===========================================
 # STAGE 3: BASE RUNTIME IMAGE
