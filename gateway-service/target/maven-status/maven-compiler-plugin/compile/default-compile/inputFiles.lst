@@ -1,4 +1,9 @@
-C:\SaasBack\gateway-service\src\main\java\com\saas\gatewayservice\components\AuthenticationFilter.java
-C:\SaasBack\gateway-service\src\main\java\com\saas\gatewayservice\components\JwtUtil.java
-C:\SaasBack\gateway-service\src\main\java\com\saas\gatewayservice\config\SecurityConfig.java
-C:\SaasBack\gateway-service\src\main\java\com\saas\gatewayservice\GatewayServiceApplication.java
+C:\SaasMonoRepo-develop01\gateway-service\src\main\java\com\saas\gatewayservice\components\AuthenticationFilter.java
+C:\SaasMonoRepo-develop01\gateway-service\src\main\java\com\saas\gatewayservice\components\JwtUtil.java
+C:\SaasMonoRepo-develop01\gateway-service\src\main\java\com\saas\gatewayservice\components\RouteValidator.java
+C:\SaasMonoRepo-develop01\gateway-service\src\main\java\com\saas\gatewayservice\config\SecurityConfig.java
+C:\SaasMonoRepo-develop01\gateway-service\src\main\java\com\saas\gatewayservice\controller\GatewayDiagnosticController.java
+C:\SaasMonoRepo-develop01\gateway-service\src\main\java\com\saas\gatewayservice\controller\RouteTestController.java
+C:\SaasMonoRepo-develop01\gateway-service\src\main\java\com\saas\gatewayservice\exception\GlobalExceptionHandler.java
+C:\SaasMonoRepo-develop01\gateway-service\src\main\java\com\saas\gatewayservice\GatewayServiceApplication.java
+C:\SaasMonoRepo-develop01\gateway-service\src\main\java\com\saas\gatewayservice\health\GatewayHealthIndicator.java

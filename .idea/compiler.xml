@@ -26,10 +26,10 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <option name="mapstruct.defaultComponentModel" value="spring" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
           <entry name="$MAVEN_REPOSITORY$/org/mapstruct/mapstruct-processor/1.6.3/mapstruct-processor-1.6.3.jar" />
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok-mapstruct-binding/0.2.0/lombok-mapstruct-binding-0.2.0.jar" />
         </processorPath>
         <module name="auth-service" />
       </profile>
@@ -37,10 +37,10 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <option name="mapstruct.defaultComponentModel" value="spring" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
           <entry name="$MAVEN_REPOSITORY$/org/mapstruct/mapstruct-processor/1.6.3/mapstruct-processor-1.6.3.jar" />
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok-mapstruct-binding/0.2.0/lombok-mapstruct-binding-0.2.0.jar" />
         </processorPath>
         <module name="system-service" />
       </profile>
@@ -48,12 +48,12 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="auth-service" options="-parameters -MapStruct.defaultComponentModel=spring" />
+      <module name="auth-service" options="-parameters -Amapstruct.defaultComponentModel=spring" />
       <module name="config-server" options="-parameters" />
       <module name="discovery-service" options="-parameters" />
       <module name="gateway-service" options="-parameters" />
       <module name="saas-common" options="-parameters" />
-      <module name="system-service" options="-parameters -MapStruct.defaultComponentModel=spring" />
+      <module name="system-service" options="-parameters -Amapstruct.defaultComponentModel=spring" />
     </option>
   </component>
 </project>
