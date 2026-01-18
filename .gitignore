@@ -27,6 +27,8 @@ buildNumber.properties
 *.iml
 *.ipr
 out/
+!**/src/main/**/port/out/
+!**/src/test/**/port/out/
 .idea_modules/
 
 # ===========================================
