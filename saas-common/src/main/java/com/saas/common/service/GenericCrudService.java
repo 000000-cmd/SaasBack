@@ -32,8 +32,8 @@ public abstract class GenericCrudService<T extends BaseDomain & IBusinessEntity<
     protected abstract String getResourceName();
 
     /**
-     * Obtiene el usuario actual para auditoría
-     * Puede ser sobrescrito para integrar con Spring Security
+     * Obtiene el usuario actual para auditoría.
+     * Puede ser sobrescrito para integrar con Spring Security.
      */
     protected String getCurrentUser() {
         // TODO: Integrar con SecurityContextHolder cuando esté disponible

@@ -1,477 +1,328 @@
 #!/bin/bash
-
 # ============================================
-# REMOTE DEPLOYMENT - LINUX/MAC
-# Despliega desde tu PC al VPS usando SSH keys
-# ============================================
-# Uso:
-#   ./remote-deploy.sh              # Deploy normal
-#   ./remote-deploy.sh --setup-ssh  # Configurar SSH keys
-#   ./remote-deploy.sh --status     # Ver estado de servicios
-#   ./remote-deploy.sh --logs       # Ver logs en vivo
+# REMOTE DEPLOY SCRIPT - SAAS PLATFORM
+# Ejecutar desde PC local para desplegar en servidor
 # ============================================
 
-set -euo pipefail
+set -e
 
-# ============================================
-# CONFIGURACION DE COLORES
-# ============================================
+# Colores
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
-BOLD='\033[1m'
 
 # ============================================
-# ARCHIVOS Y DIRECTORIOS
+# CONFIGURACIÓN - MODIFICAR SEGÚN TU SERVIDOR
 # ============================================
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/deploy-config.env"
-SSH_KEY_FILE="$HOME/.ssh/saas_vps_key"
+REMOTE_HOST="${REMOTE_HOST:-tu-servidor.com}"
+REMOTE_USER="${REMOTE_USER:-root}"
+REMOTE_PORT="${REMOTE_PORT:-22}"
+REMOTE_DIR="${REMOTE_DIR:-/opt/saas-platform}"
+SSH_KEY="${SSH_KEY:-}"
+
+# Cargar configuración desde archivo si existe
+CONFIG_FILE="deploy-config.env"
+if [ -f "$CONFIG_FILE" ]; then
+    # shellcheck source=/dev/null
+    source "$CONFIG_FILE"
+fi
 
 # ============================================
 # FUNCIONES DE UTILIDAD
 # ============================================
 log() {
-    echo -e "${GREEN}[$(date +'%H:%M:%S')]${NC} $1"
+    echo -e "${CYAN}[$(date '+%H:%M:%S')]${NC} $1"
+}
+
+success() {
+    echo -e "${GREEN}✓${NC} $1"
 }
 
 error() {
-    echo -e "${RED}[$(date +'%H:%M:%S')] ERROR:${NC} $1"
+    echo -e "${RED}✗${NC} $1"
+    exit 1
 }
 
 warning() {
-    echo -e "${YELLOW}[$(date +'%H:%M:%S')] ADVERTENCIA:${NC} $1"
+    echo -e "${YELLOW}!${NC} $1"
 }
 
 info() {
-    echo -e "${CYAN}[$(date +'%H:%M:%S')] INFO:${NC} $1"
+    echo -e "${BLUE}ℹ${NC} $1"
 }
 
 # ============================================
-# FUNCION: MOSTRAR BANNER
+# FUNCIÓN: SSH COMMAND
 # ============================================
-show_banner() {
-    echo -e "${BLUE}"
-    cat << 'BANNER'
-╔══════════════════════════════════════════════════════════════╗
-║   REMOTE DEPLOYMENT - SAAS PLATFORM                          ║
-║   SSH Keys - Sin Password                                    ║
-╚══════════════════════════════════════════════════════════════╝
-BANNER
-    echo -e "${NC}"
+ssh_cmd() {
+    local ssh_opts="-o StrictHostKeyChecking=no -o ConnectTimeout=10"
+
+    if [ -n "$SSH_KEY" ] && [ -f "$SSH_KEY" ]; then
+        ssh_opts="$ssh_opts -i $SSH_KEY"
+    fi
+
+    # shellcheck disable=SC2086
+    ssh $ssh_opts -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}" "$@"
 }
 
 # ============================================
-# FUNCION: MOSTRAR AYUDA
+# FUNCIÓN: VERIFICAR CONEXIÓN
 # ============================================
-show_help() {
-    echo "Uso: $0 [opcion]"
-    echo ""
-    echo "Opciones:"
-    echo "  (sin argumentos)   Ejecutar deployment completo"
-    echo "  --setup-ssh, -s    Configurar SSH keys para acceso sin password"
-    echo "  --status           Ver estado de servicios en el VPS"
-    echo "  --logs             Ver logs en vivo de todos los servicios"
-    echo "  --logs <servicio>  Ver logs de un servicio especifico"
-    echo "  --restart          Reiniciar todos los servicios"
-    echo "  --help, -h         Mostrar esta ayuda"
-    echo ""
-    echo "Ejemplos:"
-    echo "  $0                    # Deploy normal"
-    echo "  $0 --setup-ssh        # Configurar SSH"
-    echo "  $0 --logs gateway     # Ver logs del gateway"
-    echo ""
+check_connection() {
+    log "Verificando conexion con servidor..."
+
+    if ! ssh_cmd "echo 'Conexion OK'" &>/dev/null; then
+        error "No se puede conectar al servidor $REMOTE_HOST"
+    fi
+
+    success "Conexion establecida con $REMOTE_HOST"
 }
 
 # ============================================
-# FUNCION: CONFIGURAR SSH
+# FUNCIÓN: VERIFICAR SERVIDOR
 # ============================================
-setup_ssh() {
-    echo -e "${BLUE}"
-    cat << 'BANNER'
-╔══════════════════════════════════════════════════════════════╗
-║   CONFIGURACION DE SSH KEYS                                  ║
-╚══════════════════════════════════════════════════════════════╝
-BANNER
-    echo -e "${NC}"
+check_server() {
+    log "Verificando servidor..."
 
-    # Cargar configuracion
-    if [ ! -f "$CONFIG_FILE" ]; then
-        error "Archivo de configuracion no encontrado: $CONFIG_FILE"
-        exit 1
-    fi
+    ssh_cmd "docker --version" &>/dev/null || error "Docker no instalado en servidor"
+    ssh_cmd "docker compose version" &>/dev/null || error "Docker Compose no disponible"
+    ssh_cmd "[ -d $REMOTE_DIR ]" || error "Directorio $REMOTE_DIR no existe"
+    ssh_cmd "[ -f $REMOTE_DIR/.env ]" || error "Archivo .env no encontrado"
 
-    # shellcheck source=/dev/null
-    source "$CONFIG_FILE"
-
-    log "Generando clave SSH..."
-    mkdir -p ~/.ssh
-    chmod 700 ~/.ssh
-
-    if [ -f "$SSH_KEY_FILE" ]; then
-        warning "Ya existe una clave SSH en $SSH_KEY_FILE"
-        read -rp "Sobrescribir? (s/n): " overwrite
-        if [ "$overwrite" != "s" ]; then
-            log "Usando clave existente"
-            return 0
-        fi
-    fi
-
-    ssh-keygen -t ed25519 -f "$SSH_KEY_FILE" -N "" -C "saas-deploy-$(date +%Y%m%d)"
-    chmod 600 "$SSH_KEY_FILE"
-    log "Clave generada: $SSH_KEY_FILE"
-
-    echo ""
-    log "Copiando clave al servidor..."
-    echo -e "${YELLOW}Se pedira la PASSWORD del VPS${NC}"
-    echo ""
-
-    ssh-copy-id -i "${SSH_KEY_FILE}.pub" -p "${VPS_SSH_PORT:-22}" "${VPS_USER}@${VPS_HOST}" || {
-        warning "ssh-copy-id fallo, intentando metodo manual..."
-        cat "${SSH_KEY_FILE}.pub" | ssh -p "${VPS_SSH_PORT:-22}" "${VPS_USER}@${VPS_HOST}" \
-            "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
-    }
-
-    log "Clave copiada exitosamente"
-
-    echo ""
-    log "Verificando conexion..."
-    if ssh -i "$SSH_KEY_FILE" -p "${VPS_SSH_PORT:-22}" -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" "echo 'Conexion OK'"; then
-        log "SSH sin password configurado correctamente"
-    else
-        error "La conexion sin password fallo"
-        exit 1
-    fi
-
-    # Configurar alias en ~/.ssh/config
-    log "Configurando alias SSH..."
-    SSH_CONFIG="$HOME/.ssh/config"
-    touch "$SSH_CONFIG"
-    chmod 600 "$SSH_CONFIG"
-
-    # Remover entrada anterior si existe
-    sed -i.bak '/^# SAAS Platform VPS/,/^$/d' "$SSH_CONFIG" 2>/dev/null || true
-    sed -i.bak '/^Host saas-vps/,/^$/d' "$SSH_CONFIG" 2>/dev/null || true
-
-    cat >> "$SSH_CONFIG" << SSHCONFIG
-
-# SAAS Platform VPS
-Host saas-vps
-    HostName ${VPS_HOST}
-    User ${VPS_USER}
-    Port ${VPS_SSH_PORT:-22}
-    IdentityFile ${SSH_KEY_FILE}
-    ServerAliveInterval 60
-    ServerAliveCountMax 3
-    StrictHostKeyChecking no
-SSHCONFIG
-
-    echo ""
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}SSH configurado exitosamente!${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo ""
-    echo "Ahora puedes:"
-    echo "  - Conectarte con: ssh saas-vps"
-    echo "  - Desplegar con: ./remote-deploy.sh"
-    echo ""
+    success "Servidor verificado correctamente"
 }
 
 # ============================================
-# FUNCION: CARGAR CONFIGURACION
+# FUNCIÓN: DEPLOY COMPLETO
 # ============================================
-load_config() {
-    if [ ! -f "$CONFIG_FILE" ]; then
-        error "Archivo de configuracion no encontrado: $CONFIG_FILE"
-        echo ""
-        echo "Creando archivo de configuracion por defecto..."
+full_deploy() {
+    log "Iniciando FULL DEPLOY en $REMOTE_HOST..."
 
-        cat > "$CONFIG_FILE" << 'DEFAULTCONFIG'
-# Ver deploy-config.env para configuracion completa
-VPS_HOST=tu-servidor.com
-VPS_USER=root
-VPS_PATH=/opt/saas-platform
-VPS_SSH_PORT=22
-FORCE_REBUILD=false
-SKIP_BACKUP=false
-AUTO_PULL=true
-GIT_BRANCH=main
-DEFAULTCONFIG
+    check_connection
+    check_server
 
-        echo "Archivo creado: $CONFIG_FILE"
-        echo "Por favor, edita el archivo con la configuracion de tu servidor"
-        exit 1
-    fi
-
-    # shellcheck source=/dev/null
-    source "$CONFIG_FILE"
-
-    # Validar variables criticas
-    if [ -z "${VPS_HOST:-}" ]; then
-        error "VPS_HOST no esta definido en $CONFIG_FILE"
-        exit 1
-    fi
-
-    if [ -z "${VPS_USER:-}" ]; then
-        error "VPS_USER no esta definido en $CONFIG_FILE"
-        exit 1
-    fi
-
-    if [ -z "${VPS_PATH:-}" ]; then
-        error "VPS_PATH no esta definido en $CONFIG_FILE"
-        exit 1
-    fi
-}
-
-# ============================================
-# FUNCION: CONFIGURAR COMANDO SSH
-# ============================================
-setup_ssh_command() {
-    if [ -f "$SSH_KEY_FILE" ]; then
-        SSH_CMD="ssh -i $SSH_KEY_FILE -p ${VPS_SSH_PORT:-22} ${VPS_USER}@${VPS_HOST}"
-        SCP_CMD="scp -i $SSH_KEY_FILE -P ${VPS_SSH_PORT:-22}"
-        info "Usando clave SSH: $SSH_KEY_FILE"
-    else
-        SSH_CMD="ssh -p ${VPS_SSH_PORT:-22} ${VPS_USER}@${VPS_HOST}"
-        SCP_CMD="scp -P ${VPS_SSH_PORT:-22}"
-        warning "No se encontro clave SSH, se pedira password"
-        echo "Ejecuta './remote-deploy.sh --setup-ssh' para configurar acceso sin password"
-        echo ""
-    fi
-}
-
-# ============================================
-# FUNCION: VERIFICAR CONEXION
-# ============================================
-verify_connection() {
-    log "Verificando conexion al VPS..."
-
-    if $SSH_CMD "echo 'OK'" &>/dev/null; then
-        log "Conexion verificada"
-        return 0
-    else
-        error "No se pudo conectar al VPS"
-        echo ""
-        echo "Verifica:"
-        echo "  1. Que el servidor este accesible: ping ${VPS_HOST}"
-        echo "  2. Que las credenciales sean correctas"
-        echo "  3. Que el puerto SSH (${VPS_SSH_PORT:-22}) este abierto"
-        echo ""
-        echo "Si no tienes SSH keys configuradas, ejecuta:"
-        echo "  ./remote-deploy.sh --setup-ssh"
-        exit 1
-    fi
-}
-
-# ============================================
-# FUNCION: DETECTAR SERVICIOS
-# ============================================
-detect_services() {
-    log "Detectando servicios habilitados..."
-
-    SERVICE_COUNT=0
-    while IFS='=' read -r key value; do
-        # Ignorar comentarios y lineas vacias
-        [[ $key =~ ^#.*$ ]] && continue
-        [[ -z $key ]] && continue
-
-        if [[ $key =~ ^DEPLOY_(.+)$ ]]; then
-            value=$(echo "$value" | tr -d ' "' | tr '[:upper:]' '[:lower:]')
-            if [ "$value" = "true" ]; then
-                SERVICE_COUNT=$((SERVICE_COUNT + 1))
-                echo "   [x] $key"
-            fi
-        fi
-    done < "$CONFIG_FILE"
-
-    if [ $SERVICE_COUNT -eq 0 ]; then
-        error "No hay servicios habilitados para desplegar"
-        exit 1
-    fi
-
-    echo ""
-    log "Total: $SERVICE_COUNT servicios para desplegar"
-}
-
-# ============================================
-# FUNCION: SUBIR ARCHIVOS
-# ============================================
-upload_files() {
-    log "Subiendo archivos de configuracion..."
-
-    # Subir deploy-config.env
-    info "Subiendo deploy-config.env..."
-    $SCP_CMD "$CONFIG_FILE" "${VPS_USER}@${VPS_HOST}:${VPS_PATH}/" || {
-        error "Error subiendo deploy-config.env"
-        exit 1
-    }
-
-    # Subir deploy.sh si existe localmente
-    if [ -f "${SCRIPT_DIR}/deploy.sh" ]; then
-        info "Subiendo deploy.sh..."
-        $SCP_CMD "${SCRIPT_DIR}/deploy.sh" "${VPS_USER}@${VPS_HOST}:${VPS_PATH}/" || {
-            error "Error subiendo deploy.sh"
-            exit 1
-        }
-    fi
-
-    log "Archivos subidos exitosamente"
-}
-
-# ============================================
-# FUNCION: EJECUTAR DEPLOYMENT
-# ============================================
-execute_deployment() {
-    log "Configurando permisos en el VPS..."
-    $SSH_CMD "cd ${VPS_PATH} && chmod +x deploy.sh" || {
-        error "Error configurando permisos"
-        exit 1
-    }
-
-    echo ""
-    echo -e "${BLUE}======================================================${NC}"
-    echo -e "${BLUE}   EJECUTANDO DEPLOYMENT EN VPS                       ${NC}"
-    echo -e "${BLUE}======================================================${NC}"
+    info "Ejecutando deployment completo..."
     echo ""
 
-    # Ejecutar el script de deploy en el VPS
-    $SSH_CMD "cd ${VPS_PATH} && ./deploy.sh"
-    DEPLOY_EXIT=$?
-
-    return $DEPLOY_EXIT
-}
-
-# ============================================
-# FUNCION: VER ESTADO
-# ============================================
-show_status() {
-    load_config
-    setup_ssh_command
-    verify_connection
+    ssh_cmd "cd $REMOTE_DIR && \
+        git fetch origin && \
+        git reset --hard origin/main && \
+        git clean -fd && \
+        docker compose down --rmi all --volumes --remove-orphans && \
+        docker system prune -f && \
+        docker compose build --no-cache && \
+        docker compose up -d"
 
     echo ""
-    log "Estado de servicios en ${VPS_HOST}:"
-    echo ""
-
-    $SSH_CMD "cd ${VPS_PATH} && docker compose ps"
-
-    echo ""
-    log "Servicios registrados en Eureka:"
-    $SSH_CMD "curl -s http://localhost:8761/eureka/apps 2>/dev/null | grep -oP '<name>\K[^<]+' | sort -u" || echo "   (Eureka no disponible)"
-    echo ""
-}
-
-# ============================================
-# FUNCION: VER LOGS
-# ============================================
-show_logs() {
-    local service="${1:-}"
-
-    load_config
-    setup_ssh_command
-    verify_connection
-
-    echo ""
-    if [ -n "$service" ]; then
-        log "Mostrando logs de: $service"
-        $SSH_CMD "cd ${VPS_PATH} && docker compose logs -f $service"
-    else
-        log "Mostrando logs de todos los servicios (Ctrl+C para salir)"
-        $SSH_CMD "cd ${VPS_PATH} && docker compose logs -f"
-    fi
-}
-
-# ============================================
-# FUNCION: REINICIAR SERVICIOS
-# ============================================
-restart_services() {
-    load_config
-    setup_ssh_command
-    verify_connection
-
-    echo ""
-    log "Reiniciando todos los servicios..."
-    $SSH_CMD "cd ${VPS_PATH} && docker compose restart"
-
-    echo ""
-    log "Servicios reiniciados. Esperando que esten healthy..."
-    sleep 10
+    log "Esperando que los servicios inicien..."
+    sleep 30
 
     show_status
+
+    success "FULL DEPLOY completado!"
 }
 
 # ============================================
-# FUNCION: DEPLOYMENT PRINCIPAL
+# FUNCIÓN: QUICK DEPLOY
 # ============================================
-run_deployment() {
-    show_banner
+quick_deploy() {
+    log "Iniciando QUICK DEPLOY en $REMOTE_HOST..."
 
-    load_config
-    setup_ssh_command
-    verify_connection
-    detect_services
+    check_connection
+    check_server
+
+    info "Actualizando codigo y reiniciando..."
+    echo ""
+
+    ssh_cmd "cd $REMOTE_DIR && \
+        git fetch origin && \
+        git reset --hard origin/main && \
+        git clean -fd && \
+        docker compose down && \
+        docker compose up -d"
 
     echo ""
-    read -rp "Continuar con el deployment? (s/n): " confirm
-    if [ "$confirm" != "s" ]; then
-        echo "Deployment cancelado"
-        exit 0
+    log "Esperando que los servicios inicien..."
+    sleep 20
+
+    show_status
+
+    success "QUICK DEPLOY completado!"
+}
+
+# ============================================
+# FUNCIÓN: REBUILD SERVICE
+# ============================================
+rebuild_service() {
+    local service=$1
+
+    if [ -z "$service" ]; then
+        error "Especifica un servicio: auth-service, system-service, gateway-service"
     fi
 
-    echo ""
-    upload_files
+    log "Reconstruyendo $service en $REMOTE_HOST..."
 
-    if execute_deployment; then
-        echo ""
-        echo -e "${GREEN}======================================================${NC}"
-        echo -e "${GREEN}   DEPLOYMENT COMPLETADO EXITOSAMENTE                 ${NC}"
-        echo -e "${GREEN}======================================================${NC}"
+    check_connection
+
+    ssh_cmd "cd $REMOTE_DIR && \
+        git fetch origin && \
+        git reset --hard origin/main && \
+        docker compose build --no-cache $service && \
+        docker compose up -d $service"
+
+    success "Servicio $service reconstruido"
+}
+
+# ============================================
+# FUNCIÓN: MOSTRAR ESTADO
+# ============================================
+show_status() {
+    log "Estado de los servicios:"
+    echo ""
+
+    ssh_cmd "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E 'saas-|NAMES'"
+
+    echo ""
+    info "URLs de acceso:"
+    echo "  - Gateway:   http://$REMOTE_HOST:8080"
+    echo "  - Eureka:    http://$REMOTE_HOST:8761"
+    echo "  - Config:    http://$REMOTE_HOST:8888"
+    echo ""
+}
+
+# ============================================
+# FUNCIÓN: VER LOGS
+# ============================================
+show_logs() {
+    local service=${1:-}
+
+    log "Mostrando logs..."
+
+    if [ -n "$service" ]; then
+        ssh_cmd "cd $REMOTE_DIR && docker compose logs -f --tail=100 $service"
     else
-        echo ""
-        echo -e "${YELLOW}======================================================${NC}"
-        echo -e "${YELLOW}   DEPLOYMENT COMPLETADO CON ADVERTENCIAS            ${NC}"
-        echo -e "${YELLOW}======================================================${NC}"
+        ssh_cmd "cd $REMOTE_DIR && docker compose logs -f --tail=50"
+    fi
+}
+
+# ============================================
+# FUNCIÓN: STOP
+# ============================================
+stop_services() {
+    log "Deteniendo servicios..."
+
+    check_connection
+    ssh_cmd "cd $REMOTE_DIR && docker compose down"
+
+    success "Servicios detenidos"
+}
+
+# ============================================
+# FUNCIÓN: RESTART
+# ============================================
+restart_services() {
+    local service=${1:-}
+
+    log "Reiniciando servicios..."
+
+    check_connection
+
+    if [ -n "$service" ]; then
+        ssh_cmd "cd $REMOTE_DIR && docker compose restart $service"
+    else
+        ssh_cmd "cd $REMOTE_DIR && docker compose restart"
     fi
 
+    success "Servicios reiniciados"
+}
+
+# ============================================
+# FUNCIÓN: SETUP SSH KEY
+# ============================================
+setup_ssh() {
+    log "Configurando SSH key..."
+
+    if [ ! -f ~/.ssh/id_rsa ]; then
+        info "Generando nueva SSH key..."
+        ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
+    fi
+
+    info "Copiando SSH key al servidor..."
+    info "Se te pedira la contraseña del servidor:"
+
+    ssh-copy-id -p "$REMOTE_PORT" "${REMOTE_USER}@${REMOTE_HOST}"
+
+    success "SSH key configurada"
+}
+
+# ============================================
+# FUNCIÓN: HELP
+# ============================================
+show_help() {
     echo ""
-    echo "Comandos utiles:"
-    echo "  Ver estado:    $0 --status"
-    echo "  Ver logs:      $0 --logs"
-    echo "  Reiniciar:     $0 --restart"
-    echo "  Conectar SSH:  ssh saas-vps"
+    echo -e "${CYAN}SAAS Platform - Remote Deploy${NC}"
+    echo ""
+    echo "Uso: $0 <comando> [opciones]"
+    echo ""
+    echo "Comandos:"
+    echo "  full              - Deploy completo (pull + rebuild + start)"
+    echo "  quick             - Quick deploy (pull + restart sin rebuild)"
+    echo "  rebuild <service> - Reconstruir un servicio específico"
+    echo "  status            - Ver estado de los servicios"
+    echo "  logs [service]    - Ver logs (todos o de un servicio)"
+    echo "  stop              - Detener todos los servicios"
+    echo "  restart [service] - Reiniciar servicios"
+    echo "  setup-ssh         - Configurar SSH key para conexión sin password"
+    echo ""
+    echo "Configuración:"
+    echo "  Crea un archivo 'deploy-config.env' con:"
+    echo "    REMOTE_HOST=tu-servidor.com"
+    echo "    REMOTE_USER=root"
+    echo "    REMOTE_PORT=22"
+    echo "    REMOTE_DIR=/opt/saas-platform"
+    echo ""
+    echo "  O usa variables de entorno:"
+    echo "    REMOTE_HOST=servidor.com $0 full"
     echo ""
 }
 
 # ============================================
-# MAIN: PROCESAR ARGUMENTOS
+# MAIN
 # ============================================
-case "${1:-}" in
-    --setup-ssh|-s)
-        load_config
-        setup_ssh
+case "${1:-help}" in
+    full)
+        full_deploy
         ;;
-    --status)
+    quick)
+        quick_deploy
+        ;;
+    rebuild)
+        rebuild_service "$2"
+        ;;
+    status)
+        check_connection
         show_status
         ;;
-    --logs)
-        show_logs "${2:-}"
+    logs)
+        check_connection
+        show_logs "$2"
         ;;
-    --restart)
-        restart_services
+    stop)
+        stop_services
         ;;
-    --help|-h)
+    restart)
+        restart_services "$2"
+        ;;
+    setup-ssh|--setup-ssh)
+        setup_ssh
+        ;;
+    help|--help|-h)
         show_help
-        ;;
-    "")
-        run_deployment
         ;;
     *)
-        error "Opcion desconocida: $1"
-        echo ""
-        show_help
-        exit 1
+        error "Comando desconocido: $1. Usa '$0 help' para ver opciones."
         ;;
 esac

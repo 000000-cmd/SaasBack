@@ -1,330 +1,146 @@
 @echo off
-chcp 65001 > nul
-setlocal enabledelayedexpansion
-
 REM ============================================
-REM REMOTE DEPLOYMENT - WINDOWS
-REM Despliega usando password (o plink para automatizar)
-REM ============================================
-REM Uso:
-REM   remote-deploy.bat              - Deploy normal
-REM   remote-deploy.bat --status     - Ver estado
-REM   remote-deploy.bat --logs       - Ver logs
+REM REMOTE DEPLOY - SAAS PLATFORM (Windows)
 REM ============================================
 
-echo.
-echo ================================================================
-echo    REMOTE DEPLOYMENT - SAAS PLATFORM (Windows)
-echo ================================================================
-echo.
+setlocal EnableDelayedExpansion
 
-REM ============================================
-REM CARGAR CONFIGURACION
-REM ============================================
+REM Configuración - MODIFICAR SEGÚN TU SERVIDOR
+set "REMOTE_HOST=tu-servidor.com"
+set "REMOTE_USER=root"
+set "REMOTE_PORT=22"
+set "REMOTE_DIR=/opt/saas-platform"
 
-set CONFIG_FILE=deploy-config.env
-
-if not exist "%CONFIG_FILE%" (
-    echo [ERROR] No se encontro: %CONFIG_FILE%
-    echo.
-    echo Creando configuracion por defecto...
-
-    (
-    echo # Configuracion de deployment
-    echo VPS_HOST=tu-servidor.com
-    echo VPS_USER=root
-    echo VPS_PASSWORD=tu_password_aqui
-    echo VPS_PATH=/opt/saas-platform
-    echo VPS_SSH_PORT=22
-    echo.
-    echo FORCE_REBUILD=false
-    echo SKIP_BACKUP=false
-    echo AUTO_PULL=true
-    echo GIT_BRANCH=main
-    ) > "%CONFIG_FILE%"
-
-    echo Archivo creado: %CONFIG_FILE%
-    echo Por favor, edita el archivo con tu configuracion
-    pause
-    exit /b 1
-)
-
-REM Cargar variables del archivo de configuracion
-for /f "tokens=1,2 delims==" %%a in ('type "%CONFIG_FILE%" ^| findstr /v "^#" ^| findstr "="') do (
-    set "KEY=%%a"
-    set "VALUE=%%b"
-    REM Limpiar espacios
-    set "KEY=!KEY: =!"
-    for /f "tokens=* delims= " %%c in ("!VALUE!") do set "VALUE=%%c"
-
-    if "!KEY!"=="VPS_HOST" set "VPS_HOST=!VALUE!"
-    if "!KEY!"=="VPS_USER" set "VPS_USER=!VALUE!"
-    if "!KEY!"=="VPS_PASSWORD" set "VPS_PASSWORD=!VALUE!"
-    if "!KEY!"=="VPS_PATH" set "VPS_PATH=!VALUE!"
-    if "!KEY!"=="VPS_SSH_PORT" set "VPS_SSH_PORT=!VALUE!"
-)
-
-REM Validar configuracion
-if not defined VPS_HOST (
-    echo [ERROR] VPS_HOST no definido en %CONFIG_FILE%
-    pause
-    exit /b 1
-)
-
-if not defined VPS_PASSWORD (
-    echo [ERROR] VPS_PASSWORD no definido en %CONFIG_FILE%
-    echo En Windows se requiere el password para conexion SSH
-    pause
-    exit /b 1
-)
-
-if not defined VPS_SSH_PORT set VPS_SSH_PORT=22
-
-echo [OK] Configuracion cargada
-echo     Host: %VPS_HOST%
-echo     User: %VPS_USER%
-echo     Path: %VPS_PATH%
-echo.
-
-REM ============================================
-REM PROCESAR ARGUMENTOS
-REM ============================================
-
-if "%1"=="--status" goto :show_status
-if "%1"=="--logs" goto :show_logs
-if "%1"=="--help" goto :show_help
-if "%1"=="-h" goto :show_help
-
-REM Si no hay argumentos, ejecutar deployment
-goto :run_deployment
-
-REM ============================================
-REM FUNCIONES
-REM ============================================
-
-:show_help
-echo Uso: %~nx0 [opcion]
-echo.
-echo Opciones:
-echo   (sin argumentos)   Ejecutar deployment completo
-echo   --status           Ver estado de servicios
-echo   --logs             Ver logs de todos los servicios
-echo   --help, -h         Mostrar esta ayuda
-echo.
-goto :eof
-
-:show_status
-echo.
-echo Consultando estado de servicios...
-echo.
-
-where plink >nul 2>&1
-if %errorlevel% equ 0 (
-    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% -P %VPS_SSH_PORT% "cd %VPS_PATH% && docker compose ps"
-) else (
-    echo [INFO] Se pedira el password: %VPS_PASSWORD%
-    ssh -p %VPS_SSH_PORT% %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && docker compose ps"
-)
-goto :eof
-
-:show_logs
-echo.
-echo Mostrando logs (Ctrl+C para salir)...
-echo.
-
-where plink >nul 2>&1
-if %errorlevel% equ 0 (
-    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% -P %VPS_SSH_PORT% "cd %VPS_PATH% && docker compose logs -f --tail=100"
-) else (
-    echo [INFO] Se pedira el password: %VPS_PASSWORD%
-    ssh -p %VPS_SSH_PORT% %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && docker compose logs -f --tail=100"
-)
-goto :eof
-
-:run_deployment
-
-REM ============================================
-REM VERIFICAR OPENSSH
-REM ============================================
-
-where ssh >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] OpenSSH no esta instalado
-    echo.
-    echo Instala OpenSSH Client desde:
-    echo   Configuracion ^> Aplicaciones ^> Caracteristicas opcionales
-    echo.
-    echo O instala PuTTY/plink para automatizar con password
-    pause
-    exit /b 1
-)
-
-echo [OK] OpenSSH encontrado
-echo.
-
-REM ============================================
-REM DETECTAR SERVICIOS
-REM ============================================
-
-echo Detectando servicios habilitados...
-set SERVICE_COUNT=0
-
-for /f "tokens=1,2 delims==" %%a in ('type "%CONFIG_FILE%" ^| findstr /B "DEPLOY_"') do (
-    set "KEY=%%a"
-    set "VALUE=%%b"
-    set "VALUE=!VALUE: =!"
-    set "VALUE=!VALUE:"=!"
-
-    if /i "!VALUE!"=="true" (
-        set /a SERVICE_COUNT+=1
-        echo    [x] !KEY!
+REM Cargar configuración desde archivo si existe
+if exist "deploy-config.env" (
+    for /f "usebackq tokens=1,2 delims==" %%a in ("deploy-config.env") do (
+        set "%%a=%%b"
     )
 )
 
-if %SERVICE_COUNT% equ 0 (
-    echo [ERROR] No hay servicios habilitados
-    pause
-    exit /b 1
-)
+REM Colores (usando ANSI codes)
+set "GREEN=[92m"
+set "RED=[91m"
+set "YELLOW=[93m"
+set "CYAN=[96m"
+set "NC=[0m"
+
+if "%1"=="" goto :help
+if "%1"=="help" goto :help
+if "%1"=="--help" goto :help
+if "%1"=="-h" goto :help
+if "%1"=="full" goto :full_deploy
+if "%1"=="quick" goto :quick_deploy
+if "%1"=="status" goto :status
+if "%1"=="logs" goto :logs
+if "%1"=="stop" goto :stop
+if "%1"=="restart" goto :restart
+if "%1"=="rebuild" goto :rebuild
+
+echo %RED%Comando desconocido: %1%NC%
+goto :help
+
+:full_deploy
+echo %CYAN%[DEPLOY] Iniciando FULL DEPLOY en %REMOTE_HOST%...%NC%
+echo.
+
+ssh -p %REMOTE_PORT% %REMOTE_USER%@%REMOTE_HOST% "cd %REMOTE_DIR% && git fetch origin && git reset --hard origin/main && git clean -fd && docker compose down --rmi all --volumes --remove-orphans && docker system prune -f && docker compose build --no-cache && docker compose up -d"
 
 echo.
-echo Total: %SERVICE_COUNT% servicios
+echo %CYAN%[DEPLOY] Esperando que los servicios inicien...%NC%
+timeout /t 30 /nobreak > nul
+
+call :status
+echo.
+echo %GREEN%FULL DEPLOY completado!%NC%
+goto :end
+
+:quick_deploy
+echo %CYAN%[DEPLOY] Iniciando QUICK DEPLOY en %REMOTE_HOST%...%NC%
 echo.
 
-set /p CONFIRM="Continuar con el deployment? (s/n): "
-if /i not "%CONFIRM%"=="s" (
-    echo Deployment cancelado
-    exit /b 0
+ssh -p %REMOTE_PORT% %REMOTE_USER%@%REMOTE_HOST% "cd %REMOTE_DIR% && git fetch origin && git reset --hard origin/main && git clean -fd && docker compose down && docker compose up -d"
+
+echo.
+echo %CYAN%[DEPLOY] Esperando que los servicios inicien...%NC%
+timeout /t 20 /nobreak > nul
+
+call :status
+echo.
+echo %GREEN%QUICK DEPLOY completado!%NC%
+goto :end
+
+:rebuild
+if "%2"=="" (
+    echo %RED%Error: Especifica un servicio%NC%
+    echo Uso: %0 rebuild ^<service^>
+    echo Ejemplo: %0 rebuild auth-service
+    goto :end
 )
+echo %CYAN%[DEPLOY] Reconstruyendo %2 en %REMOTE_HOST%...%NC%
+ssh -p %REMOTE_PORT% %REMOTE_USER%@%REMOTE_HOST% "cd %REMOTE_DIR% && git fetch origin && git reset --hard origin/main && docker compose build --no-cache %2 && docker compose up -d %2"
+echo %GREEN%Servicio %2 reconstruido!%NC%
+goto :end
 
-REM ============================================
-REM DETECTAR PLINK PARA AUTOMATIZACION
-REM ============================================
+:status
+echo %CYAN%[STATUS] Estado de los servicios:%NC%
+echo.
+ssh -p %REMOTE_PORT% %REMOTE_USER%@%REMOTE_HOST% "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E 'saas-|NAMES'"
+echo.
+echo %CYAN%URLs de acceso:%NC%
+echo   - Gateway:   http://%REMOTE_HOST%:8080
+echo   - Eureka:    http://%REMOTE_HOST%:8761
+echo   - Config:    http://%REMOTE_HOST%:8888
+goto :end
 
-where plink >nul 2>&1
-if %errorlevel% equ 0 (
-    set USE_PLINK=true
-    echo [OK] Usando plink para automatizar password
+:logs
+echo %CYAN%[LOGS] Mostrando logs...%NC%
+if "%2"=="" (
+    ssh -p %REMOTE_PORT% %REMOTE_USER%@%REMOTE_HOST% "cd %REMOTE_DIR% && docker compose logs -f --tail=50"
 ) else (
-    set USE_PLINK=false
-    echo [INFO] plink no disponible, se usara metodo interactivo
-    echo.
-    echo ================================================================
-    echo    SE PEDIRA PASSWORD VARIAS VECES
-    echo    Password: %VPS_PASSWORD%
-    echo ================================================================
-    echo.
-    pause
+    ssh -p %REMOTE_PORT% %REMOTE_USER%@%REMOTE_HOST% "cd %REMOTE_DIR% && docker compose logs -f --tail=100 %2"
 )
+goto :end
 
-REM ============================================
-REM VERIFICAR CONEXION
-REM ============================================
+:stop
+echo %CYAN%[STOP] Deteniendo servicios...%NC%
+ssh -p %REMOTE_PORT% %REMOTE_USER%@%REMOTE_HOST% "cd %REMOTE_DIR% && docker compose down"
+echo %GREEN%Servicios detenidos%NC%
+goto :end
 
-echo.
-echo [1/4] Verificando conexion...
-
-if "%USE_PLINK%"=="true" (
-    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% -P %VPS_SSH_PORT% "echo OK" >nul 2>&1
-    if %errorlevel% equ 0 (
-        echo [OK] Conexion verificada
-    ) else (
-        echo [ERROR] No se pudo conectar
-        echo Verifica host, usuario y password
-        pause
-        exit /b 1
-    )
+:restart
+echo %CYAN%[RESTART] Reiniciando servicios...%NC%
+if "%2"=="" (
+    ssh -p %REMOTE_PORT% %REMOTE_USER%@%REMOTE_HOST% "cd %REMOTE_DIR% && docker compose restart"
 ) else (
-    echo Verificando conexion (password: %VPS_PASSWORD%)
-    ssh -p %VPS_SSH_PORT% %VPS_USER%@%VPS_HOST% "echo OK"
-    if %errorlevel% neq 0 (
-        echo [ERROR] No se pudo conectar
-        pause
-        exit /b 1
-    )
+    ssh -p %REMOTE_PORT% %REMOTE_USER%@%REMOTE_HOST% "cd %REMOTE_DIR% && docker compose restart %2"
 )
+echo %GREEN%Servicios reiniciados%NC%
+goto :end
 
-REM ============================================
-REM SUBIR ARCHIVOS
-REM ============================================
-
+:help
 echo.
-echo [2/4] Subiendo archivos...
-
-if "%USE_PLINK%"=="true" (
-    echo    Subiendo deploy-config.env...
-    pscp -batch -pw %VPS_PASSWORD% -P %VPS_SSH_PORT% "%CONFIG_FILE%" %VPS_USER%@%VPS_HOST%:%VPS_PATH%/
-
-    if exist deploy.sh (
-        echo    Subiendo deploy.sh...
-        pscp -batch -pw %VPS_PASSWORD% -P %VPS_SSH_PORT% deploy.sh %VPS_USER%@%VPS_HOST%:%VPS_PATH%/
-    )
-) else (
-    echo    Subiendo deploy-config.env (password: %VPS_PASSWORD%)
-    scp -P %VPS_SSH_PORT% "%CONFIG_FILE%" %VPS_USER%@%VPS_HOST%:%VPS_PATH%/
-
-    if exist deploy.sh (
-        echo    Subiendo deploy.sh (password: %VPS_PASSWORD%)
-        scp -P %VPS_SSH_PORT% deploy.sh %VPS_USER%@%VPS_HOST%:%VPS_PATH%/
-    )
-)
-
-echo [OK] Archivos subidos
+echo %CYAN%SAAS Platform - Remote Deploy (Windows)%NC%
 echo.
-
-REM ============================================
-REM CONFIGURAR PERMISOS
-REM ============================================
-
-echo [3/4] Configurando permisos...
-
-if "%USE_PLINK%"=="true" (
-    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% -P %VPS_SSH_PORT% "cd %VPS_PATH% && chmod +x deploy.sh"
-) else (
-    ssh -p %VPS_SSH_PORT% %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && chmod +x deploy.sh"
-)
-
-echo [OK] Permisos configurados
+echo Uso: %0 ^<comando^> [opciones]
 echo.
-
-REM ============================================
-REM EJECUTAR DEPLOYMENT
-REM ============================================
-
-echo [4/4] Ejecutando deployment en VPS...
+echo Comandos:
+echo   full              - Deploy completo (pull + rebuild + start)
+echo   quick             - Quick deploy (pull + restart sin rebuild)
+echo   rebuild ^<service^> - Reconstruir un servicio específico
+echo   status            - Ver estado de los servicios
+echo   logs [service]    - Ver logs (todos o de un servicio)
+echo   stop              - Detener todos los servicios
+echo   restart [service] - Reiniciar servicios
 echo.
-echo ================================================================
-echo    EJECUTANDO DEPLOYMENT EN VPS
-echo ================================================================
+echo Configuracion:
+echo   Crea un archivo 'deploy-config.env' con:
+echo     REMOTE_HOST=tu-servidor.com
+echo     REMOTE_USER=root
+echo     REMOTE_PORT=22
+echo     REMOTE_DIR=/opt/saas-platform
 echo.
+goto :end
 
-if "%USE_PLINK%"=="true" (
-    plink -batch -pw %VPS_PASSWORD% %VPS_USER%@%VPS_HOST% -P %VPS_SSH_PORT% "cd %VPS_PATH% && ./deploy.sh"
-) else (
-    ssh -p %VPS_SSH_PORT% %VPS_USER%@%VPS_HOST% "cd %VPS_PATH% && ./deploy.sh"
-)
-
-set DEPLOY_EXIT=%errorlevel%
-
-REM ============================================
-REM RESULTADO
-REM ============================================
-
-echo.
-echo ================================================================
-
-if %DEPLOY_EXIT% equ 0 (
-    echo    DEPLOYMENT COMPLETADO EXITOSAMENTE
-) else (
-    echo    DEPLOYMENT COMPLETADO CON ADVERTENCIAS
-)
-
-echo ================================================================
-echo.
-echo Comandos utiles:
-echo   Ver estado: %~nx0 --status
-echo   Ver logs:   %~nx0 --logs
-echo.
-
-pause
-exit /b %DEPLOY_EXIT%
+:end
+endlocal
