@@ -20,26 +20,18 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "sys_list_definition")
+@Table(name = "sys_listdefinition")
 @EqualsAndHashCode(callSuper = true)
 public class ListDefinitionEntity extends BaseEntity {
 
     @Id
     @UuidGenerator
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
+    @Column(name = "Id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
     private UUID id;
 
-    /**
-     * Nombre para mostrar de la lista.
-     * Ejemplo: "Tipos de Documento", "Tipos de Género"
-     */
-    @Column(name = "display_name", nullable = false, length = 100)
+    @Column(name = "DisplayName", nullable = false, length = 100)
     private String displayName;
 
-    /**
-     * Nombre de la tabla física en la base de datos.
-     * Ejemplo: sys_list_document_types, sys_list_gender_types
-     */
-    @Column(name = "physical_table_name", nullable = false, unique = true, length = 100)
+    @Column(name = "PhysicalTableName", nullable = false, unique = true, length = 100)
     private String physicalTableName;
 }

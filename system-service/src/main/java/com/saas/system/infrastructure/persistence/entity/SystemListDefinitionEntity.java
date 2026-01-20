@@ -3,6 +3,9 @@ package com.saas.system.infrastructure.persistence.entity;
 import com.saas.common.persistence.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UuidGenerator;
+
+import java.util.UUID;
 
 @Entity
 @Table(name = "sys_systemlistdefinition")
@@ -12,11 +15,10 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class SystemListDefinitionEntity extends BaseEntity {
-
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "Id", columnDefinition = "VARCHAR(36)")
-    private Long id;
+    @UuidGenerator
+    @Column(name = "Id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
+    private UUID id;
 
     @Column(name = "DisplayName", nullable = false)
     private String displayName;

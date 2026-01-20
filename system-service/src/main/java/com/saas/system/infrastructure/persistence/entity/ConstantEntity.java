@@ -19,18 +19,18 @@ public class ConstantEntity extends BaseEntity {
 
     @Id
     @UuidGenerator
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
+    @Column(name = "Id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
     private UUID id;
 
-    @Column(name = "code", unique = true, nullable = false, length = 50)
+    @Column(name = "Code", unique = true, nullable = false, length = 50)
     private String code;
 
-    @Column(name = "value", nullable = false, length = 500)
+    @Column(name = "Value", nullable = false, length = 500)
     private String value;
 
-    @Column(name = "description")
+    @Column(name = "Description")
     private String description;
 
-    @Column(name = "category", length = 100)
+    @Column(name = "Category", length = 100)
     private String category;
 }

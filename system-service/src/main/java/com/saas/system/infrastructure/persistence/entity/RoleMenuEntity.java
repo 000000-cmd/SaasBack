@@ -14,23 +14,23 @@ import java.util.UUID;
  */
 @Data
 @Entity
-@Table(name = "sys_role_menu", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"role_id", "menu_id"})
+@Table(name = "sys_rolemenu", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"RoleId", "MenuId"})
 })
-@EqualsAndHashCode(callSuper = true, exclude = {"role", "menu"})
-@ToString(exclude = {"role", "menu"})
+@EqualsAndHashCode(callSuper = true, exclude = {"Role", "Menu"})
+@ToString(exclude = {"Role", "Menu"})
 public class RoleMenuEntity extends BaseEntity {
 
     @Id
     @UuidGenerator
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
+    @Column(name = "Id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id", nullable = false)
+    @JoinColumn(name = "RoleId", nullable = false)
     private RoleEntity role;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "menu_id", nullable = false)
+    @JoinColumn(name = "MenuId", nullable = false)
     private MenuEntity menu;
 }

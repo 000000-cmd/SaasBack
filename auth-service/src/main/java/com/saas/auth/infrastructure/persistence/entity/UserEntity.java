@@ -20,27 +20,27 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users")
-@EqualsAndHashCode(callSuper = true, exclude = {"userRoles"})
+@Table(name = "auth_users")
+@EqualsAndHashCode(callSuper = true, exclude = {"roleCodes"})
 public class UserEntity extends BaseEntity {
 
     @Id
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
+    @Column(name = "Id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
     private UUID id;
 
-    @Column(name = "username", nullable = false, unique = true, length = 50)
+    @Column(name = "Username", nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(name = "password", nullable = false)
+    @Column(name = "Password", nullable = false)
     private String password;
 
-    @Column(name = "email", nullable = false, unique = true, length = 100)
+    @Column(name = "Email", nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(name = "cellular", length = 20)
+    @Column(name = "Cellular", length = 20)
     private String cellular;
 
-    @Column(name = "attachment")
+    @Column(name = "Attachment")
     private String attachment;
 
     /**
@@ -49,14 +49,13 @@ public class UserEntity extends BaseEntity {
      */
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
-            name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id")
+            name = "auth_userroles",
+            joinColumns = @JoinColumn(name = "UserId")
     )
-    @Column(name = "role_code")
+    @Column(name = "RoleCode")
     @Builder.Default
     private Set<String> roleCodes = new HashSet<>();
 
-    @PrePersist
     @Override
     protected void onCreate() {
         super.onCreate();

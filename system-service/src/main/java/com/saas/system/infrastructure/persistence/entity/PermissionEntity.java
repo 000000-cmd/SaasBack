@@ -19,18 +19,18 @@ public class PermissionEntity extends BaseEntity {
 
     @Id
     @UuidGenerator
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
+    @Column(name = "Id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
     private UUID id;
 
-    @Column(name = "code", unique = true, nullable = false, length = 50)
+    @Column(name = "Code", unique = true, nullable = false, length = 50)
     private String code;
 
-    @Column(name = "name", nullable = false, length = 100)
+    @Column(name = "Name", nullable = false, length = 100)
     private String name;
 
-    @Column(name = "description")
+    @Column(name = "Description")
     private String description;
 
-    @Column(name = "display_order")
+    @Column(name = "DisplayOrder")
     private Integer displayOrder;
 }

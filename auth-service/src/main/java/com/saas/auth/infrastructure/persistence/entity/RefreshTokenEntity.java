@@ -17,19 +17,19 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "refresh_tokens")
+@Table(name = "auth_refreshtokens")
 public class RefreshTokenEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "VARCHAR(36)")
+    @Column(name = "UserId", nullable = false, columnDefinition = "VARCHAR(36)")
     private UUID userId;
 
-    @Column(name = "token", nullable = false, unique = true)
+    @Column(name = "Token", nullable = false, unique = true)
     private String token;
 
-    @Column(name = "expiry_date", nullable = false)
+    @Column(name = "ExpiryDate", nullable = false)
     private Instant expiryDate;
 }

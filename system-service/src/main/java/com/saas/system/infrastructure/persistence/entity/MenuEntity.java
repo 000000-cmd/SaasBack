@@ -19,24 +19,24 @@ public class MenuEntity extends BaseEntity {
 
     @Id
     @UuidGenerator
-    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
+    @Column(name = "Id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
     private UUID id;
 
-    @Column(name = "code", unique = true, nullable = false, length = 50)
+    @Column(name = "Code", unique = true, nullable = false, length = 50)
     private String code;
 
-    @Column(name = "label", nullable = false, length = 100)
+    @Column(name = "Label", nullable = false, length = 100)
     private String label;
 
-    @Column(name = "router_link")
+    @Column(name = "RouterLink")
     private String routerLink;
 
-    @Column(name = "icon", length = 50)
+    @Column(name = "Icon", length = 50)
     private String icon;
 
-    @Column(name = "display_order")
+    @Column(name = "DisplayOrder")
     private Integer displayOrder;
 
-    @Column(name = "parent_id", columnDefinition = "VARCHAR(36)")
+    @Column(name = "ParentId", columnDefinition = "VARCHAR(36)")
     private UUID parentId;
 }
