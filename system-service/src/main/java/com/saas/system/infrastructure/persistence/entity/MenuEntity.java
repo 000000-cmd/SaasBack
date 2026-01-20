@@ -19,7 +19,7 @@ public class MenuEntity extends BaseEntity {
 
     @Id
     @UuidGenerator
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
     private UUID id;
 
     @Column(name = "code", unique = true, nullable = false, length = 50)
@@ -37,6 +37,6 @@ public class MenuEntity extends BaseEntity {
     @Column(name = "display_order")
     private Integer displayOrder;
 
-    @Column(name = "parent_id")
+    @Column(name = "parent_id", columnDefinition = "VARCHAR(36)")
     private UUID parentId;
 }

@@ -15,7 +15,7 @@ public class SystemListDefinitionEntity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "Id")
+    @Column(name = "Id", columnDefinition = "VARCHAR(36)")
     private Long id;
 
     @Column(name = "DisplayName", nullable = false)

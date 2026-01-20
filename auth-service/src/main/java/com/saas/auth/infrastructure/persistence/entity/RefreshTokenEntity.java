@@ -24,7 +24,7 @@ public class RefreshTokenEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id", nullable = false, columnDefinition = "VARCHAR(36)")
     private UUID userId;
 
     @Column(name = "token", nullable = false, unique = true)

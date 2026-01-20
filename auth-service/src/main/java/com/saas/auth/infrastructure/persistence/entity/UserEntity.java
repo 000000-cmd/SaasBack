@@ -25,7 +25,7 @@ import java.util.UUID;
 public class UserEntity extends BaseEntity {
 
     @Id
-    @Column(name = "id", updatable = false, nullable = false)
+    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
     private UUID id;
 
     @Column(name = "username", nullable = false, unique = true, length = 50)
