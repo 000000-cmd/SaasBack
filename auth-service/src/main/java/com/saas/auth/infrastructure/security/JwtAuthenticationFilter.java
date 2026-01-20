@@ -72,9 +72,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return path.startsWith("/api/auth/login") ||
-                path.startsWith("/api/auth/refresh") ||
-                path.startsWith("/api/auth/register") ||
-                path.startsWith("/actuator");
+
+        // Paths sin prefijo
+        boolean isPublicWithoutPrefix =
+                path.startsWith("/api/auth/login") ||
+                        path.startsWith("/api/auth/refresh") ||
+                        path.startsWith("/api/auth/register") ||
+                        path.startsWith("/actuator");
+
+        // Paths con prefijo /auth-service (cuando vienen del Gateway)
+        boolean isPublicWithPrefix =
+                path.startsWith("/auth-service/api/auth/login") ||
+                        path.startsWith("/auth-service/api/auth/refresh") ||
+                        path.startsWith("/auth-service/api/auth/register");
+
+        return isPublicWithoutPrefix || isPublicWithPrefix;
     }
 }

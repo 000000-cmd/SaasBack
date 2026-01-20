@@ -43,12 +43,23 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                // Paths sin prefijo (acceso directo al microservicio)
                                 "/api/auth/login",
                                 "/api/auth/refresh",
                                 "/api/auth/register",
                                 "/api/auth/apiV",
                                 "/api/info",
                                 "/api/version",
+
+                                // Paths con prefijo /auth-service (cuando vienen del Gateway)
+                                "/auth-service/api/auth/login",
+                                "/auth-service/api/auth/refresh",
+                                "/auth-service/api/auth/register",
+                                "/auth-service/api/auth/apiV",
+                                "/auth-service/api/info",
+                                "/auth-service/api/version",
+
+                                // Actuator
                                 "/actuator/**"
                         ).permitAll()
                         .anyRequest().authenticated()
