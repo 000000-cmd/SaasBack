@@ -1,7 +1,10 @@
 package com.saas.auth.infrastructure.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.saas.auth.infrastructure.security.CustomUserDetailsService;
 import com.saas.auth.infrastructure.security.JwtAuthenticationFilter;
+import com.saas.common.dto.ApiResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +36,7 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ObjectMapper objectMapper;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -47,12 +51,32 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/register").permitAll()
                         .requestMatchers("/api/info").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
-
-                        // Todo lo demás requiere autenticación
                         .anyRequest().authenticated()
+                )
+
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+
+                            ApiResponse<Void> apiResponse = ApiResponse.error(
+                                    "No autorizado: Token inválido o no proporcionado",
+                                    HttpServletResponse.SC_UNAUTHORIZED
+                            );
+                            response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+
+                            ApiResponse<Void> apiResponse = ApiResponse.error(
+                                    "Acceso denegado: No tiene permisos para este recurso",
+                                    HttpServletResponse.SC_FORBIDDEN
+                            );
+                            response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
+                        })
                 );
 
-        //Agregar el filtro JWT SOLO después de configurar las rutas públicas
         http.authenticationProvider(authenticationProvider());
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
