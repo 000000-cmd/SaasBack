@@ -16,9 +16,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/**
- * Filtro para validar tokens JWT en cada request.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -71,21 +68,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
+        String path = request.getRequestURI();
+
+        log.debug("Checking if should filter path: {}", path);
 
         // Paths sin prefijo
         boolean isPublicWithoutPrefix =
                 path.startsWith("/api/auth/login") ||
                         path.startsWith("/api/auth/refresh") ||
                         path.startsWith("/api/auth/register") ||
+                        path.startsWith("/api/info") ||
                         path.startsWith("/actuator");
 
         // Paths con prefijo /auth-service (cuando vienen del Gateway)
         boolean isPublicWithPrefix =
                 path.startsWith("/auth-service/api/auth/login") ||
                         path.startsWith("/auth-service/api/auth/refresh") ||
-                        path.startsWith("/auth-service/api/auth/register");
+                        path.startsWith("/auth-service/api/auth/register") ||
+                        path.startsWith("/auth-service/api/info");
 
-        return isPublicWithoutPrefix || isPublicWithPrefix;
+        boolean shouldNotFilter = isPublicWithoutPrefix || isPublicWithPrefix;
+
+        log.debug("✅ Path {} - Should NOT filter: {}", path, shouldNotFilter);
+
+        return shouldNotFilter;
     }
 }
