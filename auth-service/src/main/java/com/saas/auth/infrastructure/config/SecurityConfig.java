@@ -36,37 +36,27 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
+        http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                // Paths sin prefijo (acceso directo al microservicio)
-                                "/api/auth/login",
-                                "/api/auth/refresh",
-                                "/api/auth/register",
-                                "/api/auth/apiV",
-                                "/api/info",
-                                "/api/version",
+                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/refresh").permitAll()
+                        .requestMatchers("/api/auth/register").permitAll()
+                        .requestMatchers("/api/info").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
 
-                                // Paths con prefijo /auth-service (cuando vienen del Gateway)
-                                "/auth-service/api/auth/login",
-                                "/auth-service/api/auth/refresh",
-                                "/auth-service/api/auth/register",
-                                "/auth-service/api/auth/apiV",
-                                "/auth-service/api/info",
-                                "/auth-service/api/version",
-
-                                // Actuator
-                                "/actuator/**"
-                        ).permitAll()
+                        // Todo lo demás requiere autenticación
                         .anyRequest().authenticated()
-                )
-                .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
+                );
+
+        //Agregar el filtro JWT SOLO después de configurar las rutas públicas
+        http.authenticationProvider(authenticationProvider());
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
     }
 
     @Bean
