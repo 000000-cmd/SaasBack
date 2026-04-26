@@ -1,83 +1,84 @@
 package com.saas.system.infrastructure.controller;
 
 import com.saas.common.dto.ApiResponse;
+import com.saas.system.application.dto.request.AssignIdsRequest;
 import com.saas.system.application.dto.request.RoleRequest;
+import com.saas.system.application.dto.response.PermissionResponse;
 import com.saas.system.application.dto.response.RoleResponse;
+import com.saas.system.application.mapper.PermissionMapper;
 import com.saas.system.application.mapper.RoleMapper;
 import com.saas.system.domain.model.Role;
+import com.saas.system.domain.port.in.IRolePermissionUseCase;
 import com.saas.system.domain.port.in.IRoleUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
-/**
- * Controlador REST para gestión de Roles.
- */
 @RestController
-@RequestMapping("/api/system/roles")
+@RequestMapping("/roles")
 @RequiredArgsConstructor
 public class RoleController {
 
     private final IRoleUseCase roleUseCase;
+    private final IRolePermissionUseCase rolePermUseCase;
     private final RoleMapper mapper;
-
-    @PostMapping
-    public ResponseEntity<ApiResponse<RoleResponse>> create(@Valid @RequestBody RoleRequest request) {
-        Role domain = mapper.toDomain(request);
-        Role created = roleUseCase.create(domain);
-        RoleResponse response = mapper.toResponse(created);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.created(response));
-    }
+    private final PermissionMapper permMapper;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<RoleResponse>>> getAll() {
-        List<Role> roles = roleUseCase.getAll();
-        List<RoleResponse> response = mapper.toResponseList(roles);
-        return ResponseEntity.ok(ApiResponse.success(response));
+    public ResponseEntity<ApiResponse<List<RoleResponse>>> list() {
+        return ResponseEntity.ok(ApiResponse.success(roleUseCase.getAll().stream().map(mapper::toResponse).toList()));
     }
 
-    @GetMapping("/{code}")
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<RoleResponse>> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(roleUseCase.getById(id))));
+    }
+
+    @GetMapping("/code/{code}")
     public ResponseEntity<ApiResponse<RoleResponse>> getByCode(@PathVariable String code) {
-        Role role = roleUseCase.getByCode(code);
-        RoleResponse response = mapper.toResponse(role);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(roleUseCase.getByCode(code))));
     }
 
-    @GetMapping("/id/{id}")
-    public ResponseEntity<ApiResponse<RoleResponse>> getById(@PathVariable String id) {
-        Role role = roleUseCase.getById(id);
-        RoleResponse response = mapper.toResponse(role);
-        return ResponseEntity.ok(ApiResponse.success(response));
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<RoleResponse>> create(@Valid @RequestBody RoleRequest req) {
+        Role created = roleUseCase.create(mapper.toDomain(req));
+        return ResponseEntity.ok(ApiResponse.created(mapper.toResponse(created)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<RoleResponse>> update(
-            @PathVariable String id,
-            @Valid @RequestBody RoleRequest request) {
-        Role domain = mapper.toDomain(request);
-        Role updated = roleUseCase.update(id, domain);
-        RoleResponse response = mapper.toResponse(updated);
-        return ResponseEntity.ok(ApiResponse.success(response, "Rol actualizado exitosamente"));
-    }
-
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<ApiResponse<Void>> toggleStatus(
-            @PathVariable String id,
-            @RequestParam boolean enabled) {
-        roleUseCase.toggleEnabled(id, enabled);
-        return ResponseEntity.ok(ApiResponse.success(null,
-                enabled ? "Rol habilitado" : "Rol deshabilitado"));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<RoleResponse>> update(@PathVariable UUID id, @Valid @RequestBody RoleRequest req) {
+        Role existing = roleUseCase.getById(id);
+        mapper.updateDomain(req, existing);
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(roleUseCase.update(id, existing))));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String id) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         roleUseCase.delete(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Rol eliminado exitosamente"));
+        return ResponseEntity.ok(ApiResponse.success(null, "Rol deshabilitado"));
+    }
+
+    // --- Sub-recurso: permisos del rol ---
+
+    @GetMapping("/{id}/permissions")
+    public ResponseEntity<ApiResponse<List<PermissionResponse>>> getPermissions(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                rolePermUseCase.getPermissionsByRoleId(id).stream().map(permMapper::toResponse).toList()));
+    }
+
+    @PutMapping("/{id}/permissions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> setPermissions(@PathVariable UUID id,
+                                                              @Valid @RequestBody AssignIdsRequest req) {
+        rolePermUseCase.replacePermissionsForRole(id, req.ids());
+        return ResponseEntity.ok(ApiResponse.success(null, "Permisos asignados"));
     }
 }

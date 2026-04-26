@@ -1,42 +1,45 @@
 package com.saas.system.infrastructure.persistence.entity;
 
 import com.saas.common.persistence.BaseEntity;
-import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.UuidGenerator;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-import java.util.UUID;
-
-/**
- * Entidad JPA para Menús.
- */
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
-@Table(name = "sys_menu")
-@EqualsAndHashCode(callSuper = true)
+@Table(name = "menu")
 public class MenuEntity extends BaseEntity {
 
-    @Id
-    @UuidGenerator
-    @Column(name = "Id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
-    private UUID id;
-
-    @Column(name = "Code", unique = true, nullable = false, length = 50)
+    @Column(name = "Code", nullable = false, length = 50)
     private String code;
 
-    @Column(name = "Label", nullable = false, length = 100)
-    private String label;
+    @Column(name = "Name", nullable = false, length = 120)
+    private String name;
 
-    @Column(name = "RouterLink")
-    private String routerLink;
-
-    @Column(name = "Icon", length = 50)
+    @Column(name = "Icon", length = 60)
     private String icon;
 
-    @Column(name = "DisplayOrder")
-    private Integer displayOrder;
+    @Column(name = "Route", length = 200)
+    private String route;
 
-    @Column(name = "ParentId", columnDefinition = "VARCHAR(36)")
-    private UUID parentId;
+    /** Auto-FK para jerarquia padre/hijo. Null = seccion principal. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ParentId", foreignKey = @ForeignKey(name = "fk_menu_parent"))
+    private MenuEntity parent;
+
+    @Column(name = "DisplayOrder", nullable = false)
+    private Integer displayOrder;
 }

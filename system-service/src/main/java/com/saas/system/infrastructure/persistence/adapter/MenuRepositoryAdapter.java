@@ -1,5 +1,6 @@
 package com.saas.system.infrastructure.persistence.adapter;
 
+import com.saas.common.exception.ResourceNotFoundException;
 import com.saas.system.domain.model.Menu;
 import com.saas.system.domain.port.out.IMenuRepositoryPort;
 import com.saas.system.infrastructure.persistence.entity.MenuEntity;
@@ -7,111 +8,56 @@ import com.saas.system.infrastructure.persistence.mapper.MenuPersistenceMapper;
 import com.saas.system.infrastructure.persistence.repository.JpaMenuRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-/**
- * Adaptador de persistencia para Menús.
- */
 @Repository
 @RequiredArgsConstructor
 public class MenuRepositoryAdapter implements IMenuRepositoryPort {
 
-    private final JpaMenuRepository jpaRepository;
+    private final JpaMenuRepository jpa;
     private final MenuPersistenceMapper mapper;
 
     @Override
-    public Menu save(Menu entity) {
-        MenuEntity jpaEntity = mapper.toEntity(entity);
-        MenuEntity saved = jpaRepository.save(jpaEntity);
-        return mapper.toDomain(saved);
+    public Menu save(Menu domain) {
+        return mapper.toDomain(jpa.save(mapper.toEntity(domain)));
     }
 
     @Override
-    public Menu update(Menu entity) {
-        return save(entity);
+    @Transactional
+    public Menu update(Menu domain) {
+        MenuEntity existing = jpa.findById(domain.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Menu", "Id", domain.getId()));
+        mapper.updateEntityFromDomain(domain, existing);
+        // El parent SI debe poder cambiar (permite reorganizar la jerarquia)
+        existing.setParent(mapper.toEntity(domain).getParent());
+        return mapper.toDomain(jpa.save(existing));
+    }
+
+    @Override public Optional<Menu> findById(UUID id)            { return jpa.findById(id).map(mapper::toDomain); }
+    @Override public boolean        existsById(UUID id)          { return jpa.existsById(id); }
+    @Override public List<Menu>     findAll()                     { return mapper.toDomainList(jpa.findAll()); }
+    @Override public Optional<Menu> findByCode(String code)      { return jpa.findByCode(code).map(mapper::toDomain); }
+    @Override public boolean        existsByCode(String code)    { return jpa.existsByCode(code); }
+    @Override public List<Menu>     findRootMenus()               { return mapper.toDomainList(jpa.findRootMenus()); }
+    @Override public List<Menu>     findByParentId(UUID parentId) { return mapper.toDomainList(jpa.findByParentId(parentId)); }
+    @Override public List<Menu>     findByRoleIds(Set<UUID> roleIds) {
+        return roleIds == null || roleIds.isEmpty() ? List.of() : mapper.toDomainList(jpa.findByRoleIds(roleIds));
     }
 
     @Override
-    public List<Menu> findAll() {
-        return jpaRepository.findByVisibleTrue().stream()
-                .map(mapper::toDomain)
-                .collect(Collectors.toList());
+    @Transactional
+    public void softDeleteById(UUID id) {
+        jpa.findById(id).ifPresent(e -> {
+            e.setEnabled(false);
+            e.setVisible(false);
+            jpa.save(e);
+        });
     }
 
-    @Override
-    public List<Menu> findAllIncludingHidden() {
-        return jpaRepository.findAll().stream()
-                .map(mapper::toDomain)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public Optional<Menu> findById(String id) {
-        if (id == null) return Optional.empty();
-        return jpaRepository.findById(UUID.fromString(id))
-                .filter(MenuEntity::getVisible)
-                .map(mapper::toDomain);
-    }
-
-    @Override
-    public Optional<Menu> findByCode(String code) {
-        return jpaRepository.findByCode(code)
-                .filter(MenuEntity::getVisible)
-                .map(mapper::toDomain);
-    }
-
-    @Override
-    public void deleteById(String id) {
-        if (id != null) {
-            jpaRepository.findById(UUID.fromString(id)).ifPresent(entity -> {
-                entity.setVisible(false);
-                entity.setEnabled(false);
-                jpaRepository.save(entity);
-            });
-        }
-    }
-
-    @Override
-    public void hardDeleteById(String id) {
-        if (id != null) {
-            jpaRepository.deleteById(UUID.fromString(id));
-        }
-    }
-
-    @Override
-    public boolean existsByCode(String code) {
-        return jpaRepository.existsByCode(code);
-    }
-
-    @Override
-    public boolean existsById(String id) {
-        if (id == null) return false;
-        return jpaRepository.existsById(UUID.fromString(id));
-    }
-
-    @Override
-    public long count() {
-        return jpaRepository.findByVisibleTrue().size();
-    }
-
-    @Override
-    public List<Menu> findByParentId(String parentId) {
-        if (parentId == null || parentId.isBlank()) {
-            return findRootMenus();
-        }
-        return jpaRepository.findByParentIdAndVisibleTrue(UUID.fromString(parentId)).stream()
-                .map(mapper::toDomain)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<Menu> findRootMenus() {
-        return jpaRepository.findByParentIdIsNullAndVisibleTrue().stream()
-                .map(mapper::toDomain)
-                .collect(Collectors.toList());
-    }
+    @Override public void hardDeleteById(UUID id) { jpa.deleteById(id); }
 }

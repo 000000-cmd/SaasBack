@@ -1,23 +1,21 @@
 package com.saas.auth.infrastructure.persistence.mapper;
 
+import com.saas.common.mapper.BaseMapStructConfig;
+
 import com.saas.auth.domain.model.User;
 import com.saas.auth.infrastructure.persistence.entity.UserEntity;
+import com.saas.common.mapper.IBaseMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import java.util.List;
+@Mapper(config = BaseMapStructConfig.class)
+public interface UserPersistenceMapper extends IBaseMapper<User, UserEntity> {
 
-/**
- * Mapper entre User (domain) y UserEntity (JPA).
- */
-@Mapper(componentModel = "spring")
-public interface UserPersistenceMapper {
-
-    @Mapping(target = "id", expression = "java(entity.getId() != null ? entity.getId().toString() : null)")
+    /** roleCodes es transient en User; no existe en UserEntity. */
+    @Override
+    @Mapping(target = "roleCodes", ignore = true)
     User toDomain(UserEntity entity);
 
-    List<User> toDomainList(List<UserEntity> entities);
-
-    @Mapping(target = "id", expression = "java(domain.getId() != null ? java.util.UUID.fromString(domain.getId()) : null)")
+    @Override
     UserEntity toEntity(User domain);
 }

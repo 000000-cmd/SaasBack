@@ -6,11 +6,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
-/**
- * Repositorio JPA para RoleEntity.
- */
 @Repository
 public interface JpaRoleRepository extends JpaRepository<RoleEntity, UUID> {
 
@@ -18,5 +16,5 @@ public interface JpaRoleRepository extends JpaRepository<RoleEntity, UUID> {
 
     boolean existsByCode(String code);
 
-    List<RoleEntity> findByVisibleTrue();
+    List<RoleEntity> findByIdIn(Set<UUID> ids);
 }

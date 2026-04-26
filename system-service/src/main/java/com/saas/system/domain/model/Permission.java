@@ -1,27 +1,23 @@
 package com.saas.system.domain.model;
 
 import com.saas.common.model.BaseDomain;
-import com.saas.common.model.IBusinessEntity;
+import com.saas.common.model.ICodeable;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-/**
- * Modelo de dominio para Permisos del sistema.
- * Ejemplos: CREATE, READ, UPDATE, DELETE, EXPORT, IMPORT, etc.
- */
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @EqualsAndHashCode(callSuper = true)
-public class Permission extends BaseDomain implements IBusinessEntity<String> {
+public class Permission extends BaseDomain implements ICodeable {
 
-    private String id;
     private String code;
     private String name;
     private String description;
-    private Integer displayOrder;
 }

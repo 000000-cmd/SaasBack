@@ -1,114 +1,137 @@
 package com.saas.auth.application.service;
 
+import com.saas.auth.application.dto.request.LoginRequest;
+import com.saas.auth.application.dto.response.LoginResponse;
+import com.saas.auth.application.dto.response.TokenPairResponse;
+import com.saas.auth.application.dto.response.UserResponse;
+import com.saas.auth.application.mapper.UserMapper;
 import com.saas.auth.domain.model.RefreshToken;
 import com.saas.auth.domain.model.User;
 import com.saas.auth.domain.port.in.IAuthUseCase;
+import com.saas.auth.domain.port.in.IUserUseCase;
 import com.saas.auth.domain.port.out.IRefreshTokenRepositoryPort;
 import com.saas.auth.domain.port.out.IUserRepositoryPort;
+import com.saas.auth.infrastructure.security.JwtBlacklistService;
 import com.saas.auth.infrastructure.security.JwtTokenProvider;
 import com.saas.common.exception.InvalidCredentialsException;
 import com.saas.common.exception.TokenRefreshException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Servicio de aplicación para autenticación.
+ * Casos de uso de autenticacion: login, refresh y logout.
+ *
+ * Logout en Phase 5: revoca el refresh token. La blacklist del access token
+ * en Redis se anade en Phase 7.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService implements IAuthUseCase {
 
-    private final IUserRepositoryPort userRepository;
-    private final IRefreshTokenRepositoryPort refreshTokenRepository;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final IUserRepositoryPort userRepo;
+    private final IUserUseCase userUseCase;
+    private final IRefreshTokenRepositoryPort refreshTokenRepo;
     private final PasswordEncoder passwordEncoder;
-
-    @Value("${jwt.refreshExpirationMs:604800000}")
-    private long refreshTokenDurationMs;
+    private final JwtTokenProvider jwt;
+    private final JwtBlacklistService blacklist;
+    private final UserMapper userMapper;
 
     @Override
-    @Transactional(readOnly = true)
-    public User authenticate(String usernameOrEmail, String password) {
-        log.debug("Autenticando usuario: {}", usernameOrEmail);
+    @Transactional
+    public LoginResponse login(LoginRequest request) {
+        User user = userRepo.findByUsernameOrEmail(request.usernameOrEmail())
+                .orElseThrow(() -> new InvalidCredentialsException("Credenciales invalidas"));
 
-        User user = userRepository.findByUsernameOrEmail(usernameOrEmail)
-                .orElseThrow(() -> new InvalidCredentialsException("Usuario o contraseña incorrectos"));
-
-        if (!user.getEnabled()) {
-            throw new InvalidCredentialsException("Usuario deshabilitado");
+        if (!Boolean.TRUE.equals(user.getEnabled())) {
+            throw new InvalidCredentialsException("Cuenta deshabilitada");
         }
 
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new InvalidCredentialsException("Usuario o contraseña incorrectos");
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new InvalidCredentialsException("Credenciales invalidas");
         }
 
-        log.info("Usuario autenticado exitosamente: {}", user.getUsername());
-        return user;
+        // Cargar roles efectivos para el JWT
+        User withRoles = userUseCase.loadWithRoles(user.getId());
+
+        TokenPairResponse tokens = issueTokens(withRoles);
+
+        // Actualizar ultimo login (sin tocar otros campos)
+        withRoles.setLastLoginAt(LocalDateTime.now());
+        userRepo.update(withRoles);
+
+        UserResponse userResponse = toUserResponseWithRoles(withRoles);
+        log.info("Login exitoso: userId={} username={}", withRoles.getId(), withRoles.getUsername());
+        return new LoginResponse(tokens, userResponse);
     }
 
     @Override
     @Transactional
-    public String refreshAccessToken(String refreshToken) {
-        log.debug("Refrescando access token");
+    public TokenPairResponse refresh(String refreshTokenValue) {
+        RefreshToken token = refreshTokenRepo.findByToken(refreshTokenValue)
+                .orElseThrow(() -> new TokenRefreshException("Refresh token no encontrado"));
 
-        RefreshToken token = refreshTokenRepository.findByToken(refreshToken)
-                .orElseThrow(() -> new TokenRefreshException("Token de refresco no encontrado"));
-
-        if (token.isExpired()) {
-            refreshTokenRepository.deleteByToken(refreshToken);
-            throw new TokenRefreshException("Token de refresco expirado. Por favor, inicie sesión nuevamente");
+        if (!token.isUsable()) {
+            throw new TokenRefreshException("Refresh token expirado o revocado");
         }
 
-        User user = userRepository.findById(token.getUserId())
-                .orElseThrow(() -> new TokenRefreshException("Usuario no encontrado para el token"));
+        User user = userUseCase.loadWithRoles(token.getUserId());
 
-        String newAccessToken = generateAccessToken(user);
-        log.info("Access token refrescado para usuario: {}", user.getUsername());
-
-        return newAccessToken;
+        // Rotacion: revoca el viejo y emite un nuevo par
+        refreshTokenRepo.revokeByToken(refreshTokenValue);
+        return issueTokens(user);
     }
 
     @Override
     @Transactional
-    public void logout(String refreshToken) {
-        log.debug("Cerrando sesión");
-
-        if (refreshToken != null && !refreshToken.isBlank()) {
-            refreshTokenRepository.deleteByToken(refreshToken);
-            log.info("Refresh token eliminado");
+    public void logout(String refreshTokenValue, String accessToken) {
+        if (refreshTokenValue != null) {
+            refreshTokenRepo.revokeByToken(refreshTokenValue);
         }
+        if (accessToken != null) {
+            blacklist.blacklist(accessToken);
+        }
+        log.info("Logout completado: refresh revocado + access blacklisted");
     }
 
     @Override
     @Transactional
-    public String createRefreshToken(String userId) {
-        log.debug("Creando refresh token para usuario: {}", userId);
+    public void logoutAll(UUID userId) {
+        refreshTokenRepo.revokeAllByUserId(userId);
+        log.info("Logout global: userId={}", userId);
+    }
 
-        // Eliminar tokens anteriores del usuario
-        refreshTokenRepository.deleteByUserId(userId);
+    private TokenPairResponse issueTokens(User user) {
+        String access = jwt.generateAccessToken(user.getId(), user.getUsername(), user.getRoleCodes());
 
-        RefreshToken refreshToken = RefreshToken.builder()
-                .userId(userId)
-                .token(UUID.randomUUID().toString())
-                .expiryDate(Instant.now().plusMillis(refreshTokenDurationMs))
+        String refreshValue = UUID.randomUUID().toString().replace("-", "")
+                + UUID.randomUUID().toString().replace("-", "");
+        long refreshTtlMs = jwt.getRefreshTokenTtlMillis();
+
+        RefreshToken refresh = RefreshToken.builder()
+                .userId(user.getId())
+                .token(refreshValue)
+                .expiresAt(LocalDateTime.now().plusSeconds(refreshTtlMs / 1000))
                 .build();
+        refreshTokenRepo.save(refresh);
 
-        RefreshToken saved = refreshTokenRepository.save(refreshToken);
-        log.info("Refresh token creado para usuario: {}", userId);
-
-        return saved.getToken();
+        return TokenPairResponse.bearer(access, refreshValue, jwt.getAccessTokenTtlMillis() / 1000);
     }
 
-    @Override
-    public String generateAccessToken(User user) {
-        return jwtTokenProvider.generateToken(user.getUsername(), user.getRoleCodes());
+    private UserResponse toUserResponseWithRoles(User user) {
+        UserResponse base = userMapper.toResponse(user);
+        return new UserResponse(
+                base.id(), base.username(), base.email(), base.firstName(), base.lastName(),
+                base.fullName(), base.profilePhoto(), base.theme(), base.languageCode(),
+                base.lastLoginAt(), base.enabled(), base.visible(),
+                user.getRoleCodes(),
+                base.createdDate()
+        );
     }
 }

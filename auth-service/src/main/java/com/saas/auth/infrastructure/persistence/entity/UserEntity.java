@@ -1,66 +1,56 @@
 package com.saas.auth.infrastructure.persistence.entity;
 
 import com.saas.common.persistence.BaseEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.time.LocalDateTime;
 
 /**
  * Entidad JPA para Usuario.
+ *
+ * Tabla: {@code app_user} (prefijo {@code app_} porque {@code user} es reservada en MySQL).
+ * Hereda Id, Enabled, Visible, AuditUser, AuditDate, CreatedDate de {@link BaseEntity}.
  */
-@Data
-@Entity
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "auth_users")
-@EqualsAndHashCode(callSuper = true, exclude = {"roleCodes"})
+@Builder
+@Entity
+@Table(name = "app_user")
 public class UserEntity extends BaseEntity {
 
-    @Id
-    @Column(name = "Id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
-    private UUID id;
-
-    @Column(name = "Username", nullable = false, unique = true, length = 50)
+    @Column(name = "Username", nullable = false, length = 60)
     private String username;
 
-    @Column(name = "Password", nullable = false)
-    private String password;
-
-    @Column(name = "Email", nullable = false, unique = true, length = 100)
+    @Column(name = "Email", nullable = false, length = 120)
     private String email;
 
-    @Column(name = "Cellular", length = 20)
-    private String cellular;
+    @Column(name = "PasswordHash", nullable = false, length = 120)
+    private String passwordHash;
 
-    @Column(name = "Attachment")
-    private String attachment;
+    @Column(name = "FirstName", nullable = false, length = 80)
+    private String firstName;
 
-    /**
-     * Roles del usuario.
-     * Se almacenan como una tabla de unión con los códigos de rol.
-     */
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "auth_userroles",
-            joinColumns = @JoinColumn(name = "UserId")
-    )
-    @Column(name = "RoleCode")
-    @Builder.Default
-    private Set<String> roleCodes = new HashSet<>();
+    @Column(name = "LastName", nullable = false, length = 80)
+    private String lastName;
 
-    @Override
-    protected void onCreate() {
-        super.onCreate();
-        if (this.id == null) {
-            this.id = UUID.randomUUID();
-        }
-    }
+    @Column(name = "ProfilePhoto", length = 500)
+    private String profilePhoto;
+
+    @Column(name = "Theme", nullable = false, length = 30)
+    private String theme;
+
+    @Column(name = "LanguageCode", nullable = false, length = 10)
+    private String languageCode;
+
+    @Column(name = "LastLoginAt")
+    private LocalDateTime lastLoginAt;
 }

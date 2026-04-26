@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn -q -T 1C clean compile -DskipTests)",
+      "Bash(mvn -q -T 1C compile -DskipTests)",
+      "Bash(mvn -T 1C compile -DskipTests)",
+      "Bash(mvn -T 1C package -DskipTests)",
+      "Bash(docker --version)",
+      "Bash(docker info *)",
+      "Bash(mvn -T 1C -pl gateway-service compile -DskipTests)"
+    ]
+  }
+}

@@ -2,25 +2,17 @@ package com.saas.auth.application.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 /**
- * DTO para actualizar un usuario existente.
+ * Endpoint admin: actualiza datos de un usuario.
+ * Campos null = no se modifican (se aprovecha el patron IGNORE de updateEntityFromDomain).
  */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class UpdateUserRequest {
-
-    @Email(message = "El email debe tener un formato válido")
-    private String email;
-
-    @Size(max = 20, message = "El celular no puede exceder 20 caracteres")
-    private String cellular;
-
-    private String attachment;
-}
+public record UpdateUserRequest(
+        @Size(max = 60) String username,
+        @Email @Size(max = 120) String email,
+        @Size(max = 80) String firstName,
+        @Size(max = 80) String lastName,
+        String profilePhoto,
+        String theme,
+        String languageCode
+) {}

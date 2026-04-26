@@ -1,35 +1,40 @@
 package com.saas.system.domain.model;
 
 import com.saas.common.model.BaseDomain;
-import com.saas.common.model.IBusinessEntity;
+import com.saas.common.model.ICodeable;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.UUID;
 
 /**
- * Modelo de dominio para Menús del sistema.
+ * Menu jerarquico configurable.
+ *   - Sin {@code parentId}  -> seccion principal (top-level).
+ *   - Con {@code parentId}  -> sub-seccion del menu padre.
+ *
+ * La visibilidad por usuario se calcula en runtime intersectando los roles
+ * del usuario con las relaciones {@code menu_role}.
  */
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @EqualsAndHashCode(callSuper = true)
-public class Menu extends BaseDomain implements IBusinessEntity<String> {
+public class Menu extends BaseDomain implements ICodeable {
 
-    private String id;
     private String code;
-    private String label;
-    private String routerLink;
+    private String name;
     private String icon;
+    private String route;
+    private UUID parentId;
     private Integer displayOrder;
-    private String parentId;
 
-    /**
-     * Indica si es un menú raíz (sin padre)
-     */
     public boolean isRoot() {
-        return parentId == null || parentId.isBlank();
+        return parentId == null;
     }
 }

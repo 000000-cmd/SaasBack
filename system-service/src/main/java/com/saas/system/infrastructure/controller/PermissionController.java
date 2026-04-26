@@ -8,76 +8,55 @@ import com.saas.system.domain.model.Permission;
 import com.saas.system.domain.port.in.IPermissionUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
-/**
- * Controlador REST para gestión de Permisos.
- */
 @RestController
-@RequestMapping("/api/system/permissions")
+@RequestMapping("/permissions")
 @RequiredArgsConstructor
 public class PermissionController {
 
-    private final IPermissionUseCase permissionUseCase;
+    private final IPermissionUseCase useCase;
     private final PermissionMapper mapper;
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<PermissionResponse>> create(@Valid @RequestBody PermissionRequest request) {
-        Permission domain = mapper.toDomain(request);
-        Permission created = permissionUseCase.create(domain);
-        PermissionResponse response = mapper.toResponse(created);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.created(response));
-    }
-
     @GetMapping
-    public ResponseEntity<ApiResponse<List<PermissionResponse>>> getAll() {
-        List<Permission> permissions = permissionUseCase.getAll();
-        List<PermissionResponse> response = mapper.toResponseList(permissions);
-        return ResponseEntity.ok(ApiResponse.success(response));
+    public ResponseEntity<ApiResponse<List<PermissionResponse>>> list() {
+        return ResponseEntity.ok(ApiResponse.success(useCase.getAll().stream().map(mapper::toResponse).toList()));
     }
 
-    @GetMapping("/{code}")
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<PermissionResponse>> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(useCase.getById(id))));
+    }
+
+    @GetMapping("/code/{code}")
     public ResponseEntity<ApiResponse<PermissionResponse>> getByCode(@PathVariable String code) {
-        Permission permission = permissionUseCase.getByCode(code);
-        PermissionResponse response = mapper.toResponse(permission);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(useCase.getByCode(code))));
     }
 
-    @GetMapping("/id/{id}")
-    public ResponseEntity<ApiResponse<PermissionResponse>> getById(@PathVariable String id) {
-        Permission permission = permissionUseCase.getById(id);
-        PermissionResponse response = mapper.toResponse(permission);
-        return ResponseEntity.ok(ApiResponse.success(response));
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PermissionResponse>> create(@Valid @RequestBody PermissionRequest req) {
+        Permission created = useCase.create(mapper.toDomain(req));
+        return ResponseEntity.ok(ApiResponse.created(mapper.toResponse(created)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<PermissionResponse>> update(
-            @PathVariable String id,
-            @Valid @RequestBody PermissionRequest request) {
-        Permission domain = mapper.toDomain(request);
-        Permission updated = permissionUseCase.update(id, domain);
-        PermissionResponse response = mapper.toResponse(updated);
-        return ResponseEntity.ok(ApiResponse.success(response, "Permiso actualizado exitosamente"));
-    }
-
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<ApiResponse<Void>> toggleStatus(
-            @PathVariable String id,
-            @RequestParam boolean enabled) {
-        permissionUseCase.toggleEnabled(id, enabled);
-        return ResponseEntity.ok(ApiResponse.success(null,
-                enabled ? "Permiso habilitado" : "Permiso deshabilitado"));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PermissionResponse>> update(@PathVariable UUID id, @Valid @RequestBody PermissionRequest req) {
+        Permission existing = useCase.getById(id);
+        mapper.updateDomain(req, existing);
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(useCase.update(id, existing))));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String id) {
-        permissionUseCase.delete(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Permiso eliminado exitosamente"));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
+        useCase.delete(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Permiso deshabilitado"));
     }
 }

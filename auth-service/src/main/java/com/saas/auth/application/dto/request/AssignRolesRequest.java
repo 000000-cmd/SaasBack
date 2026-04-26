@@ -1,22 +1,8 @@
 package com.saas.auth.application.dto.request;
 
-import jakarta.validation.constraints.NotEmpty;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotNull;
 
-import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
-/**
- * DTO para asignar roles a un usuario.
- */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class AssignRolesRequest {
-
-    @NotEmpty(message = "Debe especificar al menos un rol")
-    private List<String> roleCodes;
-}
+public record AssignRolesRequest(@NotNull Set<UUID> roleIds) {}

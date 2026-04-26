@@ -5,109 +5,94 @@ import com.saas.auth.domain.port.out.IUserRepositoryPort;
 import com.saas.auth.infrastructure.persistence.entity.UserEntity;
 import com.saas.auth.infrastructure.persistence.mapper.UserPersistenceMapper;
 import com.saas.auth.infrastructure.persistence.repository.JpaUserRepository;
+import com.saas.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Adaptador de persistencia para User.
- */
 @Repository
 @RequiredArgsConstructor
 public class UserRepositoryAdapter implements IUserRepositoryPort {
 
-    private final JpaUserRepository jpaRepository;
+    private final JpaUserRepository jpa;
     private final UserPersistenceMapper mapper;
 
     @Override
     public User save(User user) {
         UserEntity entity = mapper.toEntity(user);
-        UserEntity saved = jpaRepository.save(entity);
-        return mapper.toDomain(saved);
+        return mapper.toDomain(jpa.save(entity));
     }
 
+    /**
+     * Update con merge: carga la entidad actual, aplica solo los campos cambiados
+     * (sin tocar Id ni audit) y guarda. Asi {@code CreatedDate} y demas se preservan.
+     */
     @Override
+    @Transactional
     public User update(User user) {
-        return save(user);
+        UserEntity existing = jpa.findById(user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario", "Id", user.getId()));
+        mapper.updateEntityFromDomain(user, existing);
+        return mapper.toDomain(jpa.save(existing));
     }
 
     @Override
-    public Optional<User> findById(String id) {
-        if (id == null) return Optional.empty();
-        return jpaRepository.findById(UUID.fromString(id))
-                .filter(UserEntity::getVisible)
-                .map(mapper::toDomain);
+    public Optional<User> findById(UUID id) {
+        return jpa.findById(id).map(mapper::toDomain);
     }
 
     @Override
-    public Optional<User> findByUsername(String username) {
-        return jpaRepository.findByUsername(username)
-                .filter(UserEntity::getVisible)
-                .map(mapper::toDomain);
-    }
-
-    @Override
-    public Optional<User> findByEmail(String email) {
-        return jpaRepository.findByEmail(email)
-                .filter(UserEntity::getVisible)
-                .map(mapper::toDomain);
-    }
-
-    @Override
-    public Optional<User> findByUsernameOrEmail(String usernameOrEmail) {
-        return jpaRepository.findByUsernameOrEmail(usernameOrEmail)
-                .map(mapper::toDomain);
+    public boolean existsById(UUID id) {
+        return jpa.existsById(id);
     }
 
     @Override
     public List<User> findAll() {
-        return mapper.toDomainList(jpaRepository.findByVisibleTrue());
+        return mapper.toDomainList(jpa.findAll());
     }
 
     @Override
-    public List<User> findAllIncludingHidden() {
-        return mapper.toDomainList(jpaRepository.findAll());
+    @Transactional
+    public void softDeleteById(UUID id) {
+        jpa.findById(id).ifPresent(e -> {
+            e.setEnabled(false);
+            e.setVisible(false);
+            jpa.save(e);
+        });
+    }
+
+    @Override
+    @Transactional
+    public void hardDeleteById(UUID id) {
+        jpa.deleteById(id);
+    }
+
+    @Override
+    public Optional<User> findByUsername(String username) {
+        return jpa.findByUsername(username).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<User> findByEmail(String email) {
+        return jpa.findByEmail(email).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<User> findByUsernameOrEmail(String value) {
+        return jpa.findByUsernameOrEmail(value).map(mapper::toDomain);
     }
 
     @Override
     public boolean existsByUsername(String username) {
-        return jpaRepository.existsByUsername(username);
+        return jpa.existsByUsername(username);
     }
 
     @Override
     public boolean existsByEmail(String email) {
-        return jpaRepository.existsByEmail(email);
-    }
-
-    @Override
-    public boolean existsById(String id) {
-        if (id == null) return false;
-        return jpaRepository.existsById(UUID.fromString(id));
-    }
-
-    @Override
-    public void deleteById(String id) {
-        if (id != null) {
-            jpaRepository.findById(UUID.fromString(id)).ifPresent(entity -> {
-                entity.setVisible(false);
-                entity.setEnabled(false);
-                jpaRepository.save(entity);
-            });
-        }
-    }
-
-    @Override
-    public void hardDeleteById(String id) {
-        if (id != null) {
-            jpaRepository.deleteById(UUID.fromString(id));
-        }
-    }
-
-    @Override
-    public long count() {
-        return jpaRepository.findByVisibleTrue().size();
+        return jpa.existsByEmail(email);
     }
 }

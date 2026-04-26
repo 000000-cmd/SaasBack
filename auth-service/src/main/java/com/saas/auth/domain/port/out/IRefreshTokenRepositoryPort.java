@@ -1,41 +1,24 @@
 package com.saas.auth.domain.port.out;
 
 import com.saas.auth.domain.model.RefreshToken;
+import com.saas.common.port.out.IGenericRepositoryPort;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
-/**
- * Puerto de salida para persistencia de refresh tokens.
- */
-public interface IRefreshTokenRepositoryPort {
+public interface IRefreshTokenRepositoryPort extends IGenericRepositoryPort<RefreshToken, UUID> {
 
-    /**
-     * Guarda un refresh token
-     */
-    RefreshToken save(RefreshToken refreshToken);
-
-    /**
-     * Busca un refresh token por su valor
-     */
     Optional<RefreshToken> findByToken(String token);
 
-    /**
-     * Busca un refresh token por ID de usuario
-     */
-    Optional<RefreshToken> findByUserId(String userId);
+    List<RefreshToken> findByUserId(UUID userId);
 
-    /**
-     * Elimina un refresh token por su valor
-     */
-    void deleteByToken(String token);
+    /** Marca como revocado (RevokedAt = now) sin borrar. */
+    void revokeByToken(String token);
 
-    /**
-     * Elimina todos los refresh tokens de un usuario
-     */
-    void deleteByUserId(String userId);
+    /** Revoca todos los tokens activos del usuario (logout global). */
+    void revokeAllByUserId(UUID userId);
 
-    /**
-     * Verifica si existe un refresh token
-     */
-    boolean existsByToken(String token);
+    /** Hard-delete de tokens expirados; util para job de limpieza. */
+    int deleteExpired();
 }

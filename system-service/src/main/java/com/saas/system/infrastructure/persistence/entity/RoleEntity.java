@@ -1,36 +1,30 @@
 package com.saas.system.infrastructure.persistence.entity;
 
 import com.saas.common.persistence.BaseEntity;
-import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.UuidGenerator;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-import java.util.UUID;
-
-/**
- * Entidad JPA para Roles.
- */
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
-@Table(name = "sys_role")
-@EqualsAndHashCode(callSuper = true)
+@Table(name = "role")
 public class RoleEntity extends BaseEntity {
 
-    @Id
-    @UuidGenerator
-    @Column(name = "Id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
-    private UUID id;
-
-    @Column(name = "Code", unique = true, nullable = false, length = 50)
+    @Column(name = "Code", nullable = false, length = 50)
     private String code;
 
-    @Column(name = "Name", nullable = false, length = 100)
+    @Column(name = "Name", nullable = false, length = 120)
     private String name;
 
-    @Column(name = "Description")
+    @Column(name = "Description", length = 500)
     private String description;
-
-    @Column(name = "DisplayOrder")
-    private Integer displayOrder;
 }

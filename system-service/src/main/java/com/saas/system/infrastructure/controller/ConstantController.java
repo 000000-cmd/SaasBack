@@ -8,83 +8,56 @@ import com.saas.system.domain.model.Constant;
 import com.saas.system.domain.port.in.IConstantUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
-/**
- * Controlador REST para gestión de Constantes.
- */
 @RestController
-@RequestMapping("/api/system/constants")
+@RequestMapping("/constants")
 @RequiredArgsConstructor
 public class ConstantController {
 
-    private final IConstantUseCase constantUseCase;
+    private final IConstantUseCase useCase;
     private final ConstantMapper mapper;
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<ConstantResponse>> create(@Valid @RequestBody ConstantRequest request) {
-        Constant domain = mapper.toDomain(request);
-        Constant created = constantUseCase.create(domain);
-        ConstantResponse response = mapper.toResponse(created);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.created(response));
-    }
-
     @GetMapping
-    public ResponseEntity<ApiResponse<List<ConstantResponse>>> getAll() {
-        List<Constant> constants = constantUseCase.getAll();
-        List<ConstantResponse> response = mapper.toResponseList(constants);
-        return ResponseEntity.ok(ApiResponse.success(response));
+    public ResponseEntity<ApiResponse<List<ConstantResponse>>> list() {
+        return ResponseEntity.ok(ApiResponse.success(useCase.getAll().stream().map(mapper::toResponse).toList()));
     }
 
-    @GetMapping("/category/{category}")
-    public ResponseEntity<ApiResponse<List<ConstantResponse>>> getByCategory(@PathVariable String category) {
-        List<Constant> constants = constantUseCase.getByCategory(category);
-        List<ConstantResponse> response = mapper.toResponseList(constants);
-        return ResponseEntity.ok(ApiResponse.success(response));
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ConstantResponse>> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(useCase.getById(id))));
     }
 
-    @GetMapping("/{code}")
+    /** Lookup tipico desde codigo en runtime: /constants/code/MAYORIA_EDAD */
+    @GetMapping("/code/{code}")
     public ResponseEntity<ApiResponse<ConstantResponse>> getByCode(@PathVariable String code) {
-        Constant constant = constantUseCase.getByCode(code);
-        ConstantResponse response = mapper.toResponse(constant);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(useCase.getByCode(code))));
     }
 
-    @GetMapping("/id/{id}")
-    public ResponseEntity<ApiResponse<ConstantResponse>> getById(@PathVariable String id) {
-        Constant constant = constantUseCase.getById(id);
-        ConstantResponse response = mapper.toResponse(constant);
-        return ResponseEntity.ok(ApiResponse.success(response));
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ConstantResponse>> create(@Valid @RequestBody ConstantRequest req) {
+        Constant created = useCase.create(mapper.toDomain(req));
+        return ResponseEntity.ok(ApiResponse.created(mapper.toResponse(created)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<ConstantResponse>> update(
-            @PathVariable String id,
-            @Valid @RequestBody ConstantRequest request) {
-        Constant domain = mapper.toDomain(request);
-        Constant updated = constantUseCase.update(id, domain);
-        ConstantResponse response = mapper.toResponse(updated);
-        return ResponseEntity.ok(ApiResponse.success(response, "Constante actualizada exitosamente"));
-    }
-
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<ApiResponse<Void>> toggleStatus(
-            @PathVariable String id,
-            @RequestParam boolean enabled) {
-        constantUseCase.toggleEnabled(id, enabled);
-        return ResponseEntity.ok(ApiResponse.success(null,
-                enabled ? "Constante habilitada" : "Constante deshabilitada"));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ConstantResponse>> update(@PathVariable UUID id, @Valid @RequestBody ConstantRequest req) {
+        Constant existing = useCase.getById(id);
+        mapper.updateDomain(req, existing);
+        return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(useCase.update(id, existing))));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String id) {
-        constantUseCase.delete(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Constante eliminada exitosamente"));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
+        useCase.delete(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Constante deshabilitada"));
     }
 }

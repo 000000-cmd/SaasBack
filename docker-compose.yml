@@ -50,6 +50,32 @@ services:
         max-file: "3"
 
   # ===========================================
+  # CAPA 1: REDIS (rate-limit gateway + JWT blacklist auth)
+  # ===========================================
+  redis:
+    image: redis:7.4-alpine
+    container_name: saas-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - saas-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================
   # CAPA 2: CONFIG SERVER
   # ===========================================
   config-server:
@@ -99,8 +125,8 @@ services:
     container_name: saas-discovery
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: default
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      EUREKA_INSTANCE_HOSTNAME: discovery-service
       JAVA_OPTS: >-
         -Xms128m
         -Xmx384m
@@ -138,7 +164,7 @@ services:
     container_name: saas-auth
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: default
+      SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
       SPRING_DATASOURCE_USERNAME: root
@@ -157,6 +183,8 @@ services:
       - saas-network
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       config-server:
         condition: service_healthy
@@ -186,7 +214,7 @@ services:
     container_name: saas-system
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: default
+      SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
       SPRING_DATASOURCE_USERNAME: root
@@ -234,7 +262,7 @@ services:
     container_name: saas-gateway
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: default
+      SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
       JAVA_OPTS: >-
@@ -249,6 +277,8 @@ services:
     networks:
       - saas-network
     depends_on:
+      redis:
+        condition: service_healthy
       config-server:
         condition: service_healthy
       discovery-service:
@@ -285,4 +315,6 @@ networks:
 # ===========================================
 volumes:
   mysql_data:
+    driver: local
+  redis_data:
     driver: local

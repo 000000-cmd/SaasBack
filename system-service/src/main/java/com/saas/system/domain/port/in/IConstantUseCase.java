@@ -1,17 +1,9 @@
 package com.saas.system.domain.port.in;
 
-import com.saas.common.port.in.IGenericUseCase;
+import com.saas.common.port.in.ICodeUseCase;
 import com.saas.system.domain.model.Constant;
 
-import java.util.List;
+import java.util.UUID;
 
-/**
- * Puerto de entrada (caso de uso) para Constantes.
- */
-public interface IConstantUseCase extends IGenericUseCase<Constant, String> {
-
-    /**
-     * Obtiene constantes por categoría
-     */
-    List<Constant> getByCategory(String category);
+public interface IConstantUseCase extends ICodeUseCase<Constant, UUID> {
 }

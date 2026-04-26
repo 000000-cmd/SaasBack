@@ -5,59 +5,92 @@ import com.saas.auth.domain.port.out.IRefreshTokenRepositoryPort;
 import com.saas.auth.infrastructure.persistence.entity.RefreshTokenEntity;
 import com.saas.auth.infrastructure.persistence.mapper.RefreshTokenPersistenceMapper;
 import com.saas.auth.infrastructure.persistence.repository.JpaRefreshTokenRepository;
+import com.saas.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Adaptador de persistencia para RefreshToken.
- */
 @Repository
 @RequiredArgsConstructor
 public class RefreshTokenRepositoryAdapter implements IRefreshTokenRepositoryPort {
 
-    private final JpaRefreshTokenRepository jpaRepository;
+    private final JpaRefreshTokenRepository jpa;
     private final RefreshTokenPersistenceMapper mapper;
 
     @Override
-    public RefreshToken save(RefreshToken refreshToken) {
-        RefreshTokenEntity entity = mapper.toEntity(refreshToken);
-        RefreshTokenEntity saved = jpaRepository.save(entity);
-        return mapper.toDomain(saved);
+    public RefreshToken save(RefreshToken token) {
+        return mapper.toDomain(jpa.save(mapper.toEntity(token)));
+    }
+
+    @Override
+    @Transactional
+    public RefreshToken update(RefreshToken token) {
+        RefreshTokenEntity existing = jpa.findById(token.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("RefreshToken", "Id", token.getId()));
+        mapper.updateEntityFromDomain(token, existing);
+        return mapper.toDomain(jpa.save(existing));
+    }
+
+    @Override
+    public Optional<RefreshToken> findById(UUID id) {
+        return jpa.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public boolean existsById(UUID id) {
+        return jpa.existsById(id);
+    }
+
+    @Override
+    public List<RefreshToken> findAll() {
+        return mapper.toDomainList(jpa.findAll());
+    }
+
+    @Override
+    @Transactional
+    public void softDeleteById(UUID id) {
+        jpa.findById(id).ifPresent(e -> {
+            e.setEnabled(false);
+            e.setVisible(false);
+            jpa.save(e);
+        });
+    }
+
+    @Override
+    public void hardDeleteById(UUID id) {
+        jpa.deleteById(id);
     }
 
     @Override
     public Optional<RefreshToken> findByToken(String token) {
-        return jpaRepository.findByToken(token)
-                .map(mapper::toDomain);
+        return jpa.findByToken(token).map(mapper::toDomain);
     }
 
     @Override
-    public Optional<RefreshToken> findByUserId(String userId) {
-        if (userId == null) return Optional.empty();
-        return jpaRepository.findByUserId(UUID.fromString(userId))
-                .map(mapper::toDomain);
-    }
-
-    @Override
-    @Transactional
-    public void deleteByToken(String token) {
-        jpaRepository.deleteByToken(token);
+    public List<RefreshToken> findByUserId(UUID userId) {
+        return mapper.toDomainList(jpa.findActiveByUserId(userId));
     }
 
     @Override
     @Transactional
-    public void deleteByUserId(String userId) {
-        if (userId != null) {
-            jpaRepository.deleteByUserId(UUID.fromString(userId));
-        }
+    public void revokeByToken(String token) {
+        jpa.revokeByToken(token, LocalDateTime.now());
     }
 
     @Override
-    public boolean existsByToken(String token) {
-        return jpaRepository.existsByToken(token);
+    @Transactional
+    public void revokeAllByUserId(UUID userId) {
+        jpa.revokeAllByUserId(userId, LocalDateTime.now());
+    }
+
+    @Override
+    @Transactional
+    public int deleteExpired() {
+        return jpa.deleteExpired(LocalDateTime.now());
     }
 }

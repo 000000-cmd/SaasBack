@@ -1,26 +1,33 @@
 package com.saas.system.domain.model;
 
 import com.saas.common.model.BaseDomain;
-import com.saas.common.model.IBusinessEntity;
+import com.saas.common.model.ICodeable;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-/**
- * Modelo de dominio para Constantes del sistema.
- */
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @EqualsAndHashCode(callSuper = true)
-public class Constant extends BaseDomain implements IBusinessEntity<String> {
+public class Constant extends BaseDomain implements ICodeable {
 
-    private String id;
     private String code;
+    private String name;
     private String value;
     private String description;
-    private String category;
+
+    /** Helpers tipados sobre el value (todo se guarda como STRING). */
+    public Integer getValueAsInt() {
+        return value == null ? null : Integer.valueOf(value);
+    }
+
+    public Boolean getValueAsBoolean() {
+        return value == null ? null : Boolean.valueOf(value);
+    }
 }

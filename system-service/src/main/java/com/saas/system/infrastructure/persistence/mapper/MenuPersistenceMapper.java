@@ -1,24 +1,32 @@
 package com.saas.system.infrastructure.persistence.mapper;
 
+import com.saas.common.mapper.BaseMapStructConfig;
+
 import com.saas.common.mapper.IBaseMapper;
 import com.saas.system.domain.model.Menu;
 import com.saas.system.infrastructure.persistence.entity.MenuEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
-/**
- * Mapper entre Menu (domain) y MenuEntity (JPA).
- */
-@Mapper(componentModel = "spring")
+import java.util.UUID;
+
+@Mapper(config = BaseMapStructConfig.class)
 public interface MenuPersistenceMapper extends IBaseMapper<Menu, MenuEntity> {
 
     @Override
-    @Mapping(target = "id", expression = "java(entity.getId() != null ? entity.getId().toString() : null)")
-    @Mapping(target = "parentId", expression = "java(entity.getParentId() != null ? entity.getParentId().toString() : null)")
+    @Mapping(target = "parentId", source = "parent.id")
     Menu toDomain(MenuEntity entity);
 
     @Override
-    @Mapping(target = "id", expression = "java(domain.getId() != null ? java.util.UUID.fromString(domain.getId()) : null)")
-    @Mapping(target = "parentId", expression = "java(domain.getParentId() != null && !domain.getParentId().isBlank() ? java.util.UUID.fromString(domain.getParentId()) : null)")
+    @Mapping(target = "parent", source = "parentId", qualifiedByName = "menuRef")
     MenuEntity toEntity(Menu domain);
+
+    @Named("menuRef")
+    default MenuEntity menuRef(UUID id) {
+        if (id == null) return null;
+        MenuEntity m = new MenuEntity();
+        m.setId(id);
+        return m;
+    }
 }

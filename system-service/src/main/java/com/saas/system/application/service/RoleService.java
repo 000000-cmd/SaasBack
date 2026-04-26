@@ -1,23 +1,38 @@
 package com.saas.system.application.service;
 
-import com.saas.common.service.GenericCrudService;
+import com.saas.common.service.CodeCrudService;
 import com.saas.system.domain.model.Role;
 import com.saas.system.domain.port.in.IRoleUseCase;
 import com.saas.system.domain.port.out.IRoleRepositoryPort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Servicio de aplicación para gestión de Roles.
- */
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
 @Service
-public class RoleService extends GenericCrudService<Role, String> implements IRoleUseCase {
+public class RoleService extends CodeCrudService<Role, UUID> implements IRoleUseCase {
 
-    public RoleService(IRoleRepositoryPort repository) {
-        super(repository);
+    private final IRoleRepositoryPort roleRepo;
+
+    public RoleService(IRoleRepositoryPort repo) {
+        super(repo);
+        this.roleRepo = repo;
+    }
+
+    @Override protected String getResourceName() { return "Rol"; }
+
+    @Override
+    protected void applyChanges(Role existing, Role incoming) {
+        if (incoming.getCode() != null)        existing.setCode(incoming.getCode());
+        if (incoming.getName() != null)        existing.setName(incoming.getName());
+        if (incoming.getDescription() != null) existing.setDescription(incoming.getDescription());
     }
 
     @Override
-    protected String getResourceName() {
-        return "Rol";
+    @Transactional(readOnly = true)
+    public List<Role> findByIds(Set<UUID> ids) {
+        return ids == null || ids.isEmpty() ? List.of() : roleRepo.findAllByIds(ids);
     }
 }

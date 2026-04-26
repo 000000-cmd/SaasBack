@@ -1,49 +1,18 @@
 package com.saas.auth.domain.port.in;
 
-import com.saas.auth.domain.model.User;
+import com.saas.auth.application.dto.request.LoginRequest;
+import com.saas.auth.application.dto.response.LoginResponse;
+import com.saas.auth.application.dto.response.TokenPairResponse;
 
-/**
- * Puerto de entrada para casos de uso de autenticación.
- */
 public interface IAuthUseCase {
 
-    /**
-     * Autentica un usuario y genera tokens.
-     *
-     * @param usernameOrEmail Usuario o email
-     * @param password Contraseña en texto plano
-     * @return Usuario autenticado
-     */
-    User authenticate(String usernameOrEmail, String password);
+    LoginResponse login(LoginRequest request);
 
-    /**
-     * Genera un nuevo access token usando un refresh token.
-     *
-     * @param refreshToken Token de refresco
-     * @return Nuevo access token
-     */
-    String refreshAccessToken(String refreshToken);
+    TokenPairResponse refresh(String refreshToken);
 
-    /**
-     * Invalida un refresh token (logout).
-     *
-     * @param refreshToken Token a invalidar
-     */
-    void logout(String refreshToken);
+    /** Revoca el refresh token y publica el access token en blacklist (Redis). */
+    void logout(String refreshToken, String accessToken);
 
-    /**
-     * Crea un nuevo refresh token para un usuario.
-     *
-     * @param userId ID del usuario
-     * @return Token de refresco generado
-     */
-    String createRefreshToken(String userId);
-
-    /**
-     * Genera un access token JWT para un usuario.
-     *
-     * @param user Usuario para quien generar el token
-     * @return Access token JWT
-     */
-    String generateAccessToken(User user);
+    /** Logout global de un usuario (revoca todos sus refresh tokens). */
+    void logoutAll(java.util.UUID userId);
 }

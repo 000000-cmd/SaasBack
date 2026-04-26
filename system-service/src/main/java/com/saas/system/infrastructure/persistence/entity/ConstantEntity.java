@@ -1,36 +1,39 @@
 package com.saas.system.infrastructure.persistence.entity;
 
 import com.saas.common.persistence.BaseEntity;
-import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.UuidGenerator;
-
-import java.util.UUID;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
- * Entidad JPA para Constantes.
+ * Constante de configuracion global. Value se almacena siempre como STRING; el
+ * consumidor decide como interpretarlo (numero, boolean, json...).
+ *
+ * Ejemplo: Code=MAYORIA_EDAD, Value="18".
  */
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
-@Table(name = "sys_constant")
-@EqualsAndHashCode(callSuper = true)
+@Table(name = "constant")
 public class ConstantEntity extends BaseEntity {
 
-    @Id
-    @UuidGenerator
-    @Column(name = "Id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
-    private UUID id;
-
-    @Column(name = "Code", unique = true, nullable = false, length = 50)
+    @Column(name = "Code", nullable = false, length = 80)
     private String code;
 
-    @Column(name = "Value", nullable = false, length = 500)
+    @Column(name = "Name", nullable = false, length = 120)
+    private String name;
+
+    @Column(name = "Value", nullable = false, length = 1000)
     private String value;
 
-    @Column(name = "Description")
+    @Column(name = "Description", length = 500)
     private String description;
-
-    @Column(name = "Category", length = 100)
-    private String category;
 }

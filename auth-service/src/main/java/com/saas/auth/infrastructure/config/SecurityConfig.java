@@ -1,32 +1,19 @@
 package com.saas.auth.infrastructure.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.saas.auth.infrastructure.security.CustomUserDetailsService;
-import com.saas.auth.infrastructure.security.JwtAuthenticationFilter;
-import com.saas.common.dto.ApiResponse;
-import jakarta.servlet.http.HttpServletResponse;
+import com.saas.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -34,90 +21,30 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final CustomUserDetailsService userDetailsService;
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final ObjectMapper objectMapper;
+    private final JwtAuthenticationFilter jwtFilter;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        return http
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers("/api/auth/refresh").permitAll()
-                        .requestMatchers("/api/auth/register").permitAll()
-                        .requestMatchers("/api/info").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
+                        // Login y refresh son publicos
+                        .requestMatchers("/auth/login", "/auth/refresh").permitAll()
+                        .requestMatchers("/actuator/**", "/api/info", "/api/version").permitAll()
                         .anyRequest().authenticated()
                 )
-
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            response.setContentType("application/json;charset=UTF-8");
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-
-                            ApiResponse<Void> apiResponse = ApiResponse.error(
-                                    "No autorizado: Token inválido o no proporcionado",
-                                    HttpServletResponse.SC_UNAUTHORIZED
-                            );
-                            response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
-                        })
-                        .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            response.setContentType("application/json;charset=UTF-8");
-                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-
-                            ApiResponse<Void> apiResponse = ApiResponse.error(
-                                    "Acceso denegado: No tiene permisos para este recurso",
-                                    HttpServletResponse.SC_FORBIDDEN
-                            );
-                            response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
-                        })
-                );
-
-        http.authenticationProvider(authenticationProvider());
-        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
-        return http.build();
-    }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
-        configuration.setExposedHeaders(List.of("Authorization", "X-User-Username", "X-User-Id", "X-User-Roles"));
-        configuration.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
-
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
-        return provider;
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(10);
     }
 
     @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
+        return cfg.getAuthenticationManager();
     }
 }

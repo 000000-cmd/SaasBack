@@ -1,44 +1,43 @@
 package com.saas.common.model;
 
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
- * Clase base para todos los modelos de dominio.
- * Contiene campos de auditoría y estado comunes.
+ * Modelo de dominio base. Espejo de {@link com.saas.common.persistence.BaseEntity}
+ * pero libre de anotaciones JPA (es la representacion de negocio, agnostica de
+ * persistencia).
+ *
+ * Los campos de auditoria son SOLO LECTURA desde la perspectiva del dominio: se
+ * llenan automaticamente al persistir la entidad y se leen al mapear de vuelta.
+ * Ningun caso de uso debe escribir directamente {@code auditUser} / {@code auditDate}
+ * / {@code createdDate}.
  */
-@Data
-public abstract class BaseDomain {
+@Getter
+@Setter
+@EqualsAndHashCode(of = "id")
+@ToString(of = "id")
+public abstract class BaseDomain implements IIdentifiable<UUID> {
 
-    private Boolean enabled = true;
-    private Boolean visible = true;
-    private String auditUser;
+    private UUID id;
+    private Boolean enabled = Boolean.TRUE;
+    private Boolean visible = Boolean.TRUE;
+    private UUID auditUser;
     private LocalDateTime auditDate;
+    private LocalDateTime createdDate;
 
     /**
-     * Marca la entidad como creada por un usuario específico
+     * Marca la entidad como soft-deleted. Util en operaciones de eliminacion
+     * que no eliminan fisicamente. El AuditUser/AuditDate los rellena el
+     * listener JPA al persistir.
      */
-    public void markAsCreated(String username) {
-        this.auditUser = username;
-        this.auditDate = LocalDateTime.now();
-        this.enabled = true;
-        this.visible = true;
-    }
-
-    /**
-     * Marca la entidad como actualizada por un usuario específico
-     */
-    public void markAsUpdated(String username) {
-        this.auditUser = username;
-        this.auditDate = LocalDateTime.now();
-    }
-
-    /**
-     * Soft delete - marca como no visible
-     */
-    public void markAsDeleted(String username) {
-        this.visible = false;
-        this.enabled = false;
-        markAsUpdated(username);
+    public void softDelete() {
+        this.enabled = Boolean.FALSE;
+        this.visible = Boolean.FALSE;
     }
 }

@@ -1,35 +1,25 @@
 package com.saas.system.application.service;
 
-import com.saas.common.service.GenericCrudService;
+import com.saas.common.service.CodeCrudService;
 import com.saas.system.domain.model.Constant;
 import com.saas.system.domain.port.in.IConstantUseCase;
 import com.saas.system.domain.port.out.IConstantRepositoryPort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.UUID;
 
-/**
- * Servicio de aplicación para gestión de Constantes.
- */
 @Service
-public class ConstantService extends GenericCrudService<Constant, String> implements IConstantUseCase {
+public class ConstantService extends CodeCrudService<Constant, UUID> implements IConstantUseCase {
 
-    private final IConstantRepositoryPort constantRepository;
+    public ConstantService(IConstantRepositoryPort repo) { super(repo); }
 
-    public ConstantService(IConstantRepositoryPort repository) {
-        super(repository);
-        this.constantRepository = repository;
-    }
+    @Override protected String getResourceName() { return "Constante"; }
 
     @Override
-    protected String getResourceName() {
-        return "Constante";
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Constant> getByCategory(String category) {
-        return constantRepository.findByCategory(category);
+    protected void applyChanges(Constant existing, Constant incoming) {
+        if (incoming.getCode() != null)        existing.setCode(incoming.getCode());
+        if (incoming.getName() != null)        existing.setName(incoming.getName());
+        if (incoming.getValue() != null)       existing.setValue(incoming.getValue());
+        if (incoming.getDescription() != null) existing.setDescription(incoming.getDescription());
     }
 }

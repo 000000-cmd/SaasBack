@@ -1,30 +1,40 @@
 package com.saas.auth.domain.model;
 
+import com.saas.common.model.BaseDomain;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
-/**
- * Modelo de dominio para Refresh Token.
- */
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class RefreshToken {
+@Builder
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true, exclude = "token")
+public class RefreshToken extends BaseDomain {
 
-    private Long id;
-    private String userId;
+    private UUID userId;
     private String token;
-    private Instant expiryDate;
+    private LocalDateTime expiresAt;
+    private LocalDateTime revokedAt;
 
-    /**
-     * Verifica si el token ha expirado.
-     */
     public boolean isExpired() {
-        return Instant.now().isAfter(expiryDate);
+        return expiresAt != null && LocalDateTime.now().isAfter(expiresAt);
+    }
+
+    public boolean isRevoked() {
+        return revokedAt != null;
+    }
+
+    public boolean isUsable() {
+        return !isExpired() && !isRevoked() && Boolean.TRUE.equals(getEnabled());
     }
 }

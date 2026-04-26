@@ -7,26 +7,28 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Repositorio JPA para RefreshTokenEntity.
- */
 @Repository
-public interface JpaRefreshTokenRepository extends JpaRepository<RefreshTokenEntity, Long> {
+public interface JpaRefreshTokenRepository extends JpaRepository<RefreshTokenEntity, UUID> {
 
     Optional<RefreshTokenEntity> findByToken(String token);
 
-    Optional<RefreshTokenEntity> findByUserId(UUID userId);
-
-    boolean existsByToken(String token);
-
-    @Modifying
-    @Query("DELETE FROM RefreshTokenEntity r WHERE r.token = :token")
-    void deleteByToken(@Param("token") String token);
+    @Query("SELECT rt FROM RefreshTokenEntity rt WHERE rt.user.id = :userId AND rt.revokedAt IS NULL")
+    List<RefreshTokenEntity> findActiveByUserId(@Param("userId") UUID userId);
 
     @Modifying
-    @Query("DELETE FROM RefreshTokenEntity r WHERE r.userId = :userId")
-    void deleteByUserId(@Param("userId") UUID userId);
+    @Query("UPDATE RefreshTokenEntity rt SET rt.revokedAt = :now WHERE rt.token = :token AND rt.revokedAt IS NULL")
+    int revokeByToken(@Param("token") String token, @Param("now") LocalDateTime now);
+
+    @Modifying
+    @Query("UPDATE RefreshTokenEntity rt SET rt.revokedAt = :now WHERE rt.user.id = :userId AND rt.revokedAt IS NULL")
+    int revokeAllByUserId(@Param("userId") UUID userId, @Param("now") LocalDateTime now);
+
+    @Modifying
+    @Query("DELETE FROM RefreshTokenEntity rt WHERE rt.expiresAt < :cutoff")
+    int deleteExpired(@Param("cutoff") LocalDateTime cutoff);
 }

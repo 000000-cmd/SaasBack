@@ -1,22 +1,18 @@
 package com.saas.system.domain.port.in;
 
-import com.saas.common.port.in.IGenericUseCase;
+import com.saas.common.port.in.ICodeUseCase;
 import com.saas.system.domain.model.Menu;
 
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
-/**
- * Puerto de entrada (caso de uso) para Menús.
- */
-public interface IMenuUseCase extends IGenericUseCase<Menu, String> {
+public interface IMenuUseCase extends ICodeUseCase<Menu, UUID> {
 
-    /**
-     * Obtiene los menús hijos de un menú padre
-     */
-    List<Menu> getByParentId(String parentId);
-
-    /**
-     * Obtiene los menús raíz (sin padre)
-     */
     List<Menu> getRootMenus();
+
+    List<Menu> getChildren(UUID parentId);
+
+    /** Menus visibles para un usuario dado su set de roles. */
+    List<Menu> getMenusForRoles(Set<UUID> roleIds);
 }

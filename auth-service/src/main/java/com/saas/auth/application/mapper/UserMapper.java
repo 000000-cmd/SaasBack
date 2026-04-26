@@ -1,54 +1,44 @@
 package com.saas.auth.application.mapper;
 
+import com.saas.common.mapper.BaseMapStructConfig;
+
 import com.saas.auth.application.dto.request.CreateUserRequest;
 import com.saas.auth.application.dto.request.UpdateUserRequest;
-import com.saas.auth.application.dto.response.LoginResponse;
 import com.saas.auth.application.dto.response.UserResponse;
 import com.saas.auth.domain.model.User;
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Named;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-/**
- * Mapper para conversiones de User entre capas.
- */
-@Mapper(componentModel = "spring")
+@Mapper(config = BaseMapStructConfig.class)
 public interface UserMapper {
 
-    // ===== Request to Domain =====
+    /** El password viene en claro; AuthService/UserService lo cifra con BCrypt. */
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "passwordHash", ignore = true)
+    @Mapping(target = "lastLoginAt", ignore = true)
+    @Mapping(target = "enabled", ignore = true)
+    @Mapping(target = "visible", ignore = true)
+    @Mapping(target = "auditUser", ignore = true)
+    @Mapping(target = "auditDate", ignore = true)
+    @Mapping(target = "createdDate", ignore = true)
+    @Mapping(target = "roleCodes", ignore = true)
     User toDomain(CreateUserRequest request);
 
-    User toDomain(UpdateUserRequest request);
+    @Mapping(target = "fullName", expression = "java(user.getFullName())")
+    UserResponse toResponse(User user);
 
-    // ===== Domain to Response =====
-
-    @Mapping(target = "roles", source = "roleCodes", qualifiedByName = "toRolesList")
-    UserResponse toResponse(User domain);
-
-    List<UserResponse> toResponseList(List<User> domains);
-
-    LoginResponse toLoginResponse(User domain);
-
-    // ===== Helper methods =====
-
-    @Named("toRoleCodesSet")
-    default Set<String> toRoleCodesSet(List<String> roleCodes) {
-        if (roleCodes == null || roleCodes.isEmpty()) {
-            return new HashSet<>();
-        }
-        return new HashSet<>(roleCodes);
-    }
-
-    @Named("toRolesList")
-    default List<String> toRolesList(Set<String> roleCodes) {
-        if (roleCodes == null || roleCodes.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return new ArrayList<>(roleCodes);
-    }
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "passwordHash", ignore = true)
+    @Mapping(target = "lastLoginAt", ignore = true)
+    @Mapping(target = "enabled", ignore = true)
+    @Mapping(target = "visible", ignore = true)
+    @Mapping(target = "auditUser", ignore = true)
+    @Mapping(target = "auditDate", ignore = true)
+    @Mapping(target = "createdDate", ignore = true)
+    @Mapping(target = "roleCodes", ignore = true)
+    void updateDomainFromRequest(UpdateUserRequest request, @MappingTarget User domain);
 }

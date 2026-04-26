@@ -1,5 +1,6 @@
 package com.saas.system.infrastructure.persistence.adapter;
 
+import com.saas.common.exception.ResourceNotFoundException;
 import com.saas.system.domain.model.Role;
 import com.saas.system.domain.port.out.IRoleRepositoryPort;
 import com.saas.system.infrastructure.persistence.entity.RoleEntity;
@@ -7,94 +8,50 @@ import com.saas.system.infrastructure.persistence.mapper.RolePersistenceMapper;
 import com.saas.system.infrastructure.persistence.repository.JpaRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-/**
- * Adaptador de persistencia para Roles.
- */
 @Repository
 @RequiredArgsConstructor
 public class RoleRepositoryAdapter implements IRoleRepositoryPort {
 
-    private final JpaRoleRepository jpaRepository;
+    private final JpaRoleRepository jpa;
     private final RolePersistenceMapper mapper;
 
     @Override
-    public Role save(Role entity) {
-        RoleEntity jpaEntity = mapper.toEntity(entity);
-        RoleEntity saved = jpaRepository.save(jpaEntity);
-        return mapper.toDomain(saved);
+    public Role save(Role domain) {
+        return mapper.toDomain(jpa.save(mapper.toEntity(domain)));
     }
 
     @Override
-    public Role update(Role entity) {
-        return save(entity);
+    @Transactional
+    public Role update(Role domain) {
+        RoleEntity existing = jpa.findById(domain.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "Id", domain.getId()));
+        mapper.updateEntityFromDomain(domain, existing);
+        return mapper.toDomain(jpa.save(existing));
     }
 
-    @Override
-    public List<Role> findAll() {
-        return jpaRepository.findByVisibleTrue().stream()
-                .map(mapper::toDomain)
-                .collect(Collectors.toList());
-    }
+    @Override public Optional<Role> findById(UUID id)            { return jpa.findById(id).map(mapper::toDomain); }
+    @Override public boolean      existsById(UUID id)            { return jpa.existsById(id); }
+    @Override public List<Role>   findAll()                       { return mapper.toDomainList(jpa.findAll()); }
+    @Override public Optional<Role> findByCode(String code)      { return jpa.findByCode(code).map(mapper::toDomain); }
+    @Override public boolean      existsByCode(String code)      { return jpa.existsByCode(code); }
+    @Override public List<Role>   findAllByIds(Set<UUID> ids)    { return mapper.toDomainList(jpa.findByIdIn(ids)); }
 
     @Override
-    public List<Role> findAllIncludingHidden() {
-        return jpaRepository.findAll().stream()
-                .map(mapper::toDomain)
-                .collect(Collectors.toList());
+    @Transactional
+    public void softDeleteById(UUID id) {
+        jpa.findById(id).ifPresent(e -> {
+            e.setEnabled(false);
+            e.setVisible(false);
+            jpa.save(e);
+        });
     }
 
-    @Override
-    public Optional<Role> findById(String id) {
-        if (id == null) return Optional.empty();
-        return jpaRepository.findById(UUID.fromString(id))
-                .filter(RoleEntity::getVisible)
-                .map(mapper::toDomain);
-    }
-
-    @Override
-    public Optional<Role> findByCode(String code) {
-        return jpaRepository.findByCode(code)
-                .filter(RoleEntity::getVisible)
-                .map(mapper::toDomain);
-    }
-
-    @Override
-    public void deleteById(String id) {
-        if (id != null) {
-            jpaRepository.findById(UUID.fromString(id)).ifPresent(entity -> {
-                entity.setVisible(false);
-                entity.setEnabled(false);
-                jpaRepository.save(entity);
-            });
-        }
-    }
-
-    @Override
-    public void hardDeleteById(String id) {
-        if (id != null) {
-            jpaRepository.deleteById(UUID.fromString(id));
-        }
-    }
-
-    @Override
-    public boolean existsByCode(String code) {
-        return jpaRepository.existsByCode(code);
-    }
-
-    @Override
-    public boolean existsById(String id) {
-        if (id == null) return false;
-        return jpaRepository.existsById(UUID.fromString(id));
-    }
-
-    @Override
-    public long count() {
-        return jpaRepository.findByVisibleTrue().size();
-    }
+    @Override public void hardDeleteById(UUID id) { jpa.deleteById(id); }
 }

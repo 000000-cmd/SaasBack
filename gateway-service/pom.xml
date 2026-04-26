@@ -44,6 +44,12 @@
             <artifactId>caffeine</artifactId>
         </dependency>
 
+        <!-- Redis reactive (rate limiting con RedisRateLimiter) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+
         <!-- JWT para validación (opcional) -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

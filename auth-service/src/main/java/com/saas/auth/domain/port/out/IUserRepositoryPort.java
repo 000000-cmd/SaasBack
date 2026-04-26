@@ -1,86 +1,27 @@
 package com.saas.auth.domain.port.out;
 
 import com.saas.auth.domain.model.User;
+import com.saas.common.port.out.IGenericRepositoryPort;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
- * Puerto de salida para persistencia de usuarios.
+ * Puerto de salida para User.
  *
- * NOTA: Esta interface NO extiende IGenericRepositoryPort porque
- * User no usa código (code) como identificador de negocio,
- * usa username y email.
+ * Hereda CRUD por Id de {@link IGenericRepositoryPort}, y agrega busquedas
+ * por las claves de negocio (username, email).
  */
-public interface IUserRepositoryPort {
+public interface IUserRepositoryPort extends IGenericRepositoryPort<User, UUID> {
 
-    /**
-     * Guarda un usuario
-     */
-    User save(User user);
-
-    /**
-     * Actualiza un usuario
-     */
-    User update(User user);
-
-    /**
-     * Busca un usuario por ID
-     */
-    Optional<User> findById(String id);
-
-    /**
-     * Busca un usuario por nombre de usuario
-     */
     Optional<User> findByUsername(String username);
 
-    /**
-     * Busca un usuario por email
-     */
     Optional<User> findByEmail(String email);
 
-    /**
-     * Busca un usuario por nombre de usuario o email
-     */
+    /** Login flexible: acepta username o email. */
     Optional<User> findByUsernameOrEmail(String usernameOrEmail);
 
-    /**
-     * Obtiene todos los usuarios visibles
-     */
-    List<User> findAll();
-
-    /**
-     * Obtiene todos los usuarios incluyendo los no visibles
-     */
-    List<User> findAllIncludingHidden();
-
-    /**
-     * Verifica si existe un usuario con el nombre de usuario dado
-     */
     boolean existsByUsername(String username);
 
-    /**
-     * Verifica si existe un usuario con el email dado
-     */
     boolean existsByEmail(String email);
-
-    /**
-     * Verifica si existe un usuario con el ID dado
-     */
-    boolean existsById(String id);
-
-    /**
-     * Elimina un usuario por ID (soft delete)
-     */
-    void deleteById(String id);
-
-    /**
-     * Elimina permanentemente un usuario (hard delete)
-     */
-    void hardDeleteById(String id);
-
-    /**
-     * Cuenta los usuarios visibles
-     */
-    long count();
 }

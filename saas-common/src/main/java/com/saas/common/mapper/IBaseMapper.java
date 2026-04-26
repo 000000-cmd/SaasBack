@@ -1,33 +1,44 @@
 package com.saas.common.mapper;
 
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
+
 import java.util.List;
 
 /**
- * Interface base para mappers entre Domain y Entity.
- * Usar con MapStruct.
+ * Contrato base para mappers Domain &lt;-&gt; Entity (implementacion via MapStruct).
  *
- * @param <D> Tipo del modelo de Dominio
- * @param <E> Tipo de la Entidad JPA
+ * Convencion para los servicios concretos:
+ *   - {@link #toDomain(Object)} y {@link #toEntity(Object)} cubren creacion y lectura.
+ *   - {@link #updateEntityFromDomain(Object, Object)} cubre la actualizacion: hace merge
+ *     del dominio entrante SOBRE la entidad existente preservando el Id y los campos de
+ *     auditoria (los maneja {@code AuditingEntityListener}, NUNCA el dominio).
+ *
+ * @param <D> dominio
+ * @param <E> entidad JPA
  */
 public interface IBaseMapper<D, E> {
 
-    /**
-     * Convierte una entidad JPA a modelo de dominio
-     */
     D toDomain(E entity);
 
-    /**
-     * Convierte un modelo de dominio a entidad JPA
-     */
     E toEntity(D domain);
 
-    /**
-     * Convierte una lista de entidades a lista de dominios
-     */
     List<D> toDomainList(List<E> entities);
 
-    /**
-     * Convierte una lista de dominios a lista de entidades
-     */
     List<E> toEntityList(List<D> domains);
+
+    /**
+     * Merge del dominio entrante sobre una entidad existente.
+     * - Se ignoran Id y campos de auditoria (el listener JPA los maneja).
+     * - Los nulls del dominio NO sobrescriben (NullValuePropertyMappingStrategy.IGNORE),
+     *   asi un PATCH parcial no borra datos existentes.
+     */
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id",          ignore = true)
+    @Mapping(target = "auditUser",   ignore = true)
+    @Mapping(target = "auditDate",   ignore = true)
+    @Mapping(target = "createdDate", ignore = true)
+    void updateEntityFromDomain(D incoming, @MappingTarget E target);
 }
