@@ -19,7 +19,9 @@
 10. [Cambiar de modo: IntelliJ ↔ Docker](#10-cambiar-de-modo-intellij--docker)
 11. [Cambiar de ambiente: local → dev → prod](#11-cambiar-de-ambiente-local--dev--prod)
 12. [Rate limiting](#12-rate-limiting)
-13. [Datos seed (cuenta admin, roles, etc.)](#13-datos-seed-cuenta-admin-roles-etc)
+13. [CORS](#13-cors)
+14. [Datos seed (cuenta admin, roles, etc.)](#14-datos-seed-cuenta-admin-roles-etc)
+15. [Migraciones Flyway](#15-migraciones-flyway)
 
 ---
 
@@ -900,7 +902,76 @@ saas.gateway.rate-limit.login.burst-capacity=5
 
 ---
 
-## 13. Datos seed (cuenta admin, roles, etc.)
+## 13. CORS
+
+El gateway centraliza CORS para toda la plataforma. Implementación:
+
+- **`config/CorsConfig.java`** — declara un `CorsWebFilter` con `@Order(HIGHEST_PRECEDENCE)` para que corra **antes** de Spring Security y del `AuthenticationFilter`. Esto garantiza que los preflight `OPTIONS` no pasen por la cadena de auth.
+- **`config/SecurityConfig.java`** — invoca `.cors(Customizer.withDefaults())` para que Spring Security delegue el manejo de CORS al `CorsWebFilter` declarado.
+- **`RouteValidator.requiresAuthentication()`** — devuelve `false` para todo método `OPTIONS` (defensa en profundidad).
+
+### Properties
+
+Definidas en `gateway-service.properties` (defaults) y sobreescritas por cada perfil:
+
+```properties
+saas.cors.allowed-origins=http://localhost:4200,http://127.0.0.1:4200,http://localhost:3000
+saas.cors.allow-credentials=true
+saas.cors.max-age-seconds=3600
+```
+
+### Por ambiente
+
+| Profile | Property | Origen típico |
+|---|---|---|
+| **local** | `saas.cors.allowed-origins=http://localhost:4200,http://127.0.0.1:4200,http://localhost:3000,http://localhost:5173` | Angular/Vite dev servers |
+| **dev** | `saas.cors.allowed-origins=${DEV_CORS_ORIGINS:http://localhost:4200,http://127.0.0.1:4200,http://dev-server:4200}` | Configurable por env var |
+| **prod** | `saas.cors.allowed-origins=${CORS_ORIGINS}` | **Obligatorio** (sin default — fail fast) |
+
+**Patrones**: la lista acepta orígenes exactos (`https://app.empresa.com`) o patrones con comodín (`https://*.empresa.com`). Esto último es útil cuando hay múltiples subdominios (admin, app, partner, etc.).
+
+### Headers expuestos
+
+Por defecto:
+
+```
+Authorization, X-User-Id, X-User-Username, X-User-Roles, X-Total-Count, X-Request-Id
+```
+
+Si necesitas exponer un header adicional, edita el bean en `CorsConfig.java`.
+
+### Verificación de preflight
+
+```bash
+curl -i -X OPTIONS http://localhost:8080/auth/login \
+  -H "Origin: http://localhost:4200" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: content-type,authorization"
+```
+
+Respuesta esperada: **204 No Content** con headers:
+```
+Access-Control-Allow-Origin: http://localhost:4200
+Access-Control-Allow-Credentials: true
+Access-Control-Allow-Methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+Access-Control-Allow-Headers: <lo que pidió Request-Headers>
+Access-Control-Max-Age: 3600
+```
+
+### Errores comunes
+
+| Síntoma | Causa | Fix |
+|---|---|---|
+| `No 'Access-Control-Allow-Origin' header is present` | Origen no listado | Añade el origen a `saas.cors.allowed-origins` |
+| Preflight devuelve 401 | Security está interceptando OPTIONS | Verifica que `SecurityConfig.filterChain` invoque `.cors(Customizer.withDefaults())` |
+| Preflight devuelve 200 pero el request real falla | El backend ignora el origen | El `CorsWebFilter` no se registró (revisar log al arrancar) |
+| `It does not have HTTP ok status` | El path no existe en `RouteConfig.java` (404 sin headers CORS) | Verifica que la ruta esté declarada |
+
+> **Nota importante**: el frontend pega al gateway con la URL **sin prefijo `/api`** (las rutas del gateway son limpias: `/auth/login`, `/users/{id}`, `/menus/me`, etc.). Si añades `/api` en el front vas a tener 404s que el navegador reporta como CORS porque el 404 no incluye headers CORS.
+
+---
+
+## 14. Datos seed (cuenta admin, roles, etc.)
 
 ### Cuenta admin
 
@@ -950,7 +1021,67 @@ saas.bootstrap.admin.last-name=Sistema
 
 ### Menús seed
 
-Dashboard + Configuración (con sub-menús: Usuarios, Roles, Menús, Listas, Constantes).
+A partir de la migración **V3** los menús están alineados con la arquitectura del front (`/admin/*` para administradores y `/tenant/*` para usuarios de negocio).
+
+**Menús del rol `ADMIN`** (visibles en `/admin/*`):
+
+| Sección | Items |
+|---|---|
+| Panel | `ADMIN_DASHBOARD` → `/admin/dashboard` |
+| Usuarios | `ADMIN_USERS` → `/admin/users`, `ADMIN_INVITES` → `/admin/invitations` |
+| Sistema | `ADMIN_LISTS` → `/admin/system-lists`, `ADMIN_CONSTANTS` → `/admin/constants`, `ADMIN_MENUS` → `/admin/menus` |
+| Seguridad | `ADMIN_ROLES` → `/admin/roles`, `ADMIN_PERMS` → `/admin/permissions`, `ADMIN_AUDIT` → `/admin/audit` |
+| Preferencias | `ADMIN_PROFILE` → `/admin/profile` |
+
+**Menús del rol `USER`** (visibles en `/tenant/*`):
+
+| Sección | Items |
+|---|---|
+| Operación | `TENANT_DASHBOARD`, `TENANT_AGENDA`, `TENANT_HISTORY` |
+| Equipo | `TENANT_EMPLOYEES`, `TENANT_SHIFTS` |
+| Negocio | `TENANT_PRODUCTS`, `TENANT_STOCK`, `TENANT_PAYROLL` |
+| Configuración | `TENANT_CFG_BIZ`, `TENANT_SERVICES`, `TENANT_DEDUCTIONS`, `TENANT_INTEGRATIONS`, `TENANT_PROFILE` |
+
+Los iconos de cada menú son strings en kebab-case (ej. `shield-check`, `list-tree`, `user-plus`) que el front mapea a la librería **Lucide** vía un resolver. Si añades un menú con un icono que el resolver no conoce, el front muestra un icono por defecto sin romperse.
+
+---
+
+## 15. Migraciones Flyway
+
+Flyway se ejecuta automáticamente al arrancar **`auth-service`** (es el único servicio con Flyway activado; comparte la BD con el resto). Las migraciones viven en `auth-service/src/main/resources/db/migration/`.
+
+### Convenciones
+
+- Versionado secuencial: `V<n>__<descripcion>.sql`. Ejemplo: `V3__realign_menus.sql`.
+- Una vez aplicada y el checksum registrado en `flyway_schema_history`, **no se puede modificar** — se debe crear `V<n+1>__fix_xxx.sql`.
+- Para datos editables en runtime (catálogos, menús), usa `INSERT ... ON DUPLICATE KEY UPDATE` o `DELETE` antes del `INSERT` para hacer la migración idempotente.
+
+### Migraciones actuales
+
+| Versión | Archivo | Qué hace |
+|---|---|---|
+| V1 | `V1__schema.sql` | Esquema completo: `users`, `role`, `permission`, `role_permission`, `menu`, `menu_role`, `system_list`, `system_list_item`, `constant`, `refresh_token` |
+| V2 | `V2__seed_base.sql` | Roles base, permisos, listas del sistema, constantes, menús iniciales |
+| V3 | `V3__realign_menus.sql` | **Borra** los menús de V2 y los **siembra de nuevo** con rutas `/admin/*` y `/tenant/*` alineadas al refactor del front (crispy-erp 2026-04-26) |
+
+### Cuando agregar una migración nueva
+
+| Caso | Tipo |
+|---|---|
+| Nueva entidad / columna | DDL puro (`CREATE TABLE`, `ALTER TABLE`) |
+| Cambio de catálogo / constante / menú | Idempotente con `DELETE + INSERT` o `INSERT ... ON DUPLICATE KEY UPDATE` |
+| Backfill de datos | Plantéalo en transacción y verifica con `SELECT COUNT(*)` antes del `UPDATE` |
+| Renombrar columna en prod | Estrategia en 3 fases: agregar nueva → backfill → drop vieja en una migración posterior |
+
+### Resetear desde cero (solo local / docker)
+
+```bash
+docker compose down -v               # borra volumen MySQL
+docker compose up -d mysql redis     # arranca infra limpia
+# arrancar auth-service → Flyway aplica V1, V2, V3 desde cero
+```
+
+> En **prod** no se hace `down -v`. Si una migración rompe, corre `V<n+1>__rollback_xxx.sql` con el inverso.
 
 ---
 
@@ -1010,9 +1141,60 @@ Invoke-RestMethod -Uri http://localhost:8080/constants/code/MAYORIA_EDAD -Header
 | Gateway: 503 al hacer cualquier request | Servicio destino no registrado en Eureka | Esperar ~30s tras arrancar el servicio (Eureka cache) o reiniciar |
 | Gateway: 429 inmediato en login | Rate limit muy bajo | Reduce `saas.gateway.rate-limit.login.*` o espera el replenish |
 | Login retorna `roleCodes: []` | Feign no pudo resolver, system-service caído | Verifica que system-service esté UP en Eureka |
-| `Schema-validation: missing column [Xxx]` | Entidad nueva sin migración Flyway | Crear `V3__add_xxx.sql` en `auth-service/src/main/resources/db/migration/` |
+| `Schema-validation: missing column [Xxx]` | Entidad nueva sin migración Flyway | Crear `V<n>__add_xxx.sql` en `auth-service/src/main/resources/db/migration/` |
 | `port already in use: 3306` | Tu MySQL local sigue corriendo | Apagar MySQL local o cambiar puerto del Docker MySQL a 3307 |
+| Front recibe error CORS en cualquier endpoint | Origen no listado, o el front pega a `/api/...` (las rutas del gateway son limpias) | Añade el origen a `saas.cors.allowed-origins`; quita `/api` del front |
+| Front: el sidebar viene vacío tras login | El usuario no tiene roles asignados o ningún rol tiene menús asignados (`menu_role`) | `GET /menus/tree` con token ADMIN para ver el árbol; revisar `menu_role` |
+| `FlywayException: Validate failed: Migrations have failed validation` | Modificaste un `V<n>__*.sql` ya aplicado | Crear `V<n+1>__*.sql` con el cambio. Nunca editar migraciones aplicadas |
+| Login OK pero todos los endpoints del sistema dan 401 | El JWT no tiene roles (Feign hacia system-service falló al hacer login) | Verifica que system-service esté UP en Eureka antes de hacer login |
 
 ---
 
-**Última actualización**: 2026-04-25 — refactor a línea base con UUID + auditoría unificada.
+## Apéndice C — Stack rápido de comandos
+
+### IntelliJ (modo desarrollo día a día)
+
+```bash
+# 1. Levantar solo infra (mysql + redis)
+docker compose up -d mysql redis
+
+# 2. Arrancar servicios en este orden desde IntelliJ:
+#    config-server → discovery-service → auth-service → system-service → gateway-service
+```
+
+### Docker (modo demo / integración)
+
+```bash
+docker compose down -v               # reset total (opcional)
+docker compose build --no-cache      # solo si tocaste código Java
+docker compose up -d
+docker compose logs -f gateway-service
+```
+
+### Reset de BD sin tocar contenedores
+
+```bash
+docker compose exec mysql mysql -u root -prootpassword \
+  -e "DROP DATABASE saas_db; CREATE DATABASE saas_db;"
+docker compose restart auth-service     # re-aplica Flyway
+```
+
+### Inspeccionar estado en runtime
+
+```bash
+# Servicios registrados en Eureka
+curl http://localhost:8761/eureka/apps -H "Accept: application/json" | jq
+
+# Rutas activas en el gateway
+curl http://localhost:8080/actuator/gateway/routes | jq '.[] | {id, uri, predicate}'
+
+# Health de cada servicio
+for p in 8082 8083 8080 8761 8888; do
+  echo "=== :$p ==="
+  curl -s http://localhost:$p/actuator/health | jq -r '.status'
+done
+```
+
+---
+
+**Última actualización**: 2026-04-26 — añadido CORS centralizado, migración V3 (realineación de menús con front), apéndice C con comandos frecuentes.

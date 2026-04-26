@@ -7,7 +7,12 @@
       "Bash(mvn -T 1C package -DskipTests)",
       "Bash(docker --version)",
       "Bash(docker info *)",
-      "Bash(mvn -T 1C -pl gateway-service compile -DskipTests)"
+      "Bash(mvn -T 1C -pl gateway-service compile -DskipTests)",
+      "Bash(rm -rf moon modules platform shared layout core auth)",
+      "Read(//c/c/crispy-erp/src/**)",
+      "Read(//c/crispy-erp/**)",
+      "Bash(npx --no-install ng build --configuration development)",
+      "Bash(xargs grep *)"
     ]
   }
 }
