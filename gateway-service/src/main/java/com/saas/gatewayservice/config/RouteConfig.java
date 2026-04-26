@@ -21,6 +21,12 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 public class RouteConfig {
 
+    @Value("${saas.gateway.services.auth-uri:lb://auth-service}")
+    private String authUri;
+
+    @Value("${saas.gateway.services.system-uri:lb://system-service}")
+    private String systemUri;
+
     @Bean("loginRateLimiter")
     public RedisRateLimiter loginRateLimiter(
             @Value("${saas.gateway.rate-limit.login.replenish-rate:2}") int replenish,
@@ -44,34 +50,31 @@ public class RouteConfig {
 
     @Bean
     public RouteLocator routes(RouteLocatorBuilder builder,
-                                RedisRateLimiter loginRateLimiter,
-                                RedisRateLimiter defaultRateLimiter,
-                                KeyResolver ipKeyResolver,
-                                KeyResolver userKeyResolver) {
+                               RedisRateLimiter loginRateLimiter,
+                               RedisRateLimiter defaultRateLimiter,
+                               KeyResolver ipKeyResolver,
+                               KeyResolver userKeyResolver) {
 
         return builder.routes()
-                // 1) Login con rate-limit estricto (anti brute-force) + IP key
                 .route("auth-login", r -> r
                         .path("/auth/login")
                         .filters(f -> f.requestRateLimiter(c -> c
                                 .setRateLimiter(loginRateLimiter)
                                 .setKeyResolver(ipKeyResolver)))
-                        .uri("lb://auth-service"))
-                // 2) Resto de auth-service (refresh, logout, /users/**)
+                        .uri(authUri))
                 .route("auth", r -> r
                         .path("/auth/**", "/users/**")
                         .filters(f -> f.requestRateLimiter(c -> c
                                 .setRateLimiter(defaultRateLimiter)
                                 .setKeyResolver(userKeyResolver)))
-                        .uri("lb://auth-service"))
-                // 3) System-service (catalogos)
+                        .uri(authUri))
                 .route("system", r -> r
                         .path("/roles/**", "/permissions/**", "/menus/**",
                                 "/system-lists/**", "/constants/**")
                         .filters(f -> f.requestRateLimiter(c -> c
                                 .setRateLimiter(defaultRateLimiter)
                                 .setKeyResolver(userKeyResolver)))
-                        .uri("lb://system-service"))
+                        .uri(systemUri))
                 .build();
     }
 }

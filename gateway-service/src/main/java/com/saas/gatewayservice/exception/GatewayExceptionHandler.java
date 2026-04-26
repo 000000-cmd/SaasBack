@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -37,6 +38,11 @@ public class GatewayExceptionHandler implements ErrorWebExceptionHandler {
         if (ex instanceof NotFoundException) {
             status = HttpStatus.SERVICE_UNAVAILABLE;
             message = "Servicio no disponible";
+        } else if (ex instanceof UnknownHostException
+                || (ex.getCause() instanceof UnknownHostException)) {
+            status = HttpStatus.SERVICE_UNAVAILABLE;
+            message = "Servicio no disponible (no resolvible)";
+            log.warn("No se pudo resolver el host del servicio: {}", ex.getMessage());
         } else if (ex instanceof ResponseStatusException rse) {
             status = HttpStatus.resolve(rse.getStatusCode().value());
             if (status == null) status = HttpStatus.INTERNAL_SERVER_ERROR;
