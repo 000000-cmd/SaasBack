@@ -26,7 +26,6 @@ import java.util.UUID;
 
 /**
  * Casos de uso de autenticacion: login, refresh y logout.
- *
  * Logout en Phase 5: revoca el refresh token. La blacklist del access token
  * en Redis se anade en Phase 7.
  */

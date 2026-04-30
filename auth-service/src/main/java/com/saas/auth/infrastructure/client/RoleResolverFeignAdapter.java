@@ -14,15 +14,20 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Resolucion de Role.Id -> Role.Code consultando system-service via Feign.
- * Cache Caffeine en memoria (5 min TTL) para evitar latencia y carga en logins
+ *
+ * <p>Cache Caffeine en memoria (5 min TTL) para evitar latencia y carga en logins
  * masivos.
  *
- * Fail-graceful: si Feign cae o el rol no se puede resolver, devuelve
+ * <p>Fail-graceful: si Feign cae o el rol no se puede resolver, devuelve
  * silenciosamente lo que tenga (set parcial / vacio). Login no se rompe;
  * el usuario tendra menos roles efectivos hasta que system-service vuelva.
+ *
+ * <p>El wire format con system-service usa {@code Map<String,String>} (UUIDs
+ * stringificados) para evitar el bug de Jackson KeyDeserializer con UUID en Feign.
  */
 @Slf4j
 @Primary
@@ -55,14 +60,26 @@ public class RoleResolverFeignAdapter implements IRoleResolverPort {
         }
 
         if (!missing.isEmpty()) {
+            // Wire format: Set<String>. Convertimos UUID -> String al cruzar la frontera Feign.
+            Set<String> missingAsStrings = missing.stream()
+                    .map(UUID::toString)
+                    .collect(Collectors.toSet());
+            log.info("Feign call -> system-service /internal/roles/codes con {} ids: {}",
+                    missingAsStrings.size(), missingAsStrings);
+
             try {
-                Map<UUID, String> fetched = client.resolveRoleCodes(missing);
-                fetched.forEach((id, code) -> {
+                Map<String, String> fetched = client.resolveRoleCodes(missingAsStrings);
+                log.info("Feign respondio con {} mappings: {}", fetched.size(), fetched);
+
+                // Y al volver, String -> UUID.
+                fetched.forEach((idStr, code) -> {
+                    UUID id = UUID.fromString(idStr);
                     cache.put(id, code);
                     resolved.put(id, code);
                 });
             } catch (Exception ex) {
-                log.warn("Feign->system-service resolve roles fallo (degradacion silenciosa): {}", ex.getMessage());
+                // Stack trace completo para diagnostico (antes solo se logueaba el mensaje).
+                log.warn("Feign->system-service resolve roles fallo (degradacion silenciosa)", ex);
             }
         }
 

@@ -13,12 +13,17 @@ import java.util.UUID;
 /**
  * Feign client a system-service via Eureka (lb://system-service).
  * Solo expone los endpoints {@code /internal/**} (S2S, no traversed por gateway).
+ *
+ * <p><b>Wire format</b>: usa {@code String} para los UUIDs (claves de Map y elementos
+ * de Set). Asi evitamos depender de un {@code KeyDeserializer} de Jackson para UUID
+ * en {@code Map<UUID,String>}, problema reproducible con Feign + Spring Cloud 2025.x.
+ * Los adapters convierten UUID&lt;-&gt;String en el borde.
  */
 @FeignClient(name = "system-service", contextId = "system-service-internal")
 public interface SystemServiceClient {
 
     @PostMapping("/internal/roles/codes")
-    Map<UUID, String> resolveRoleCodes(@RequestBody Set<UUID> roleIds);
+    Map<String, String> resolveRoleCodes(@RequestBody Set<String> roleIds);
 
     @GetMapping("/internal/roles/{roleId}/permissions/codes")
     Set<String> getPermissionCodesByRoleId(@PathVariable("roleId") UUID roleId);

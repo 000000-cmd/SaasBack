@@ -51,7 +51,13 @@ public class UserController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<UserResponse>>> list() {
-        List<UserResponse> users = userUseCase.getAll().stream().map(this::toResponseWithRoles).toList();
+        // getAll() no carga roleCodes; hidratamos por usuario antes de mapear.
+        // Endpoint admin-only y N suele ser pequeno: el N+1 es aceptable.
+        // Si crece a miles, mover a un loadAllWithRoles batch (1 query user_role + 1 Feign).
+        List<UserResponse> users = userUseCase.getAll().stream()
+                .map(u -> userUseCase.loadWithRoles(u.getId()))
+                .map(this::toResponseWithRoles)
+                .toList();
         return ResponseEntity.ok(ApiResponse.success(users));
     }
 

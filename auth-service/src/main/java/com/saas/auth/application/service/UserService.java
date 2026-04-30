@@ -125,9 +125,15 @@ public class UserService extends GenericCrudService<User, UUID> implements IUser
         Set<UUID> roleIds = userRoleRepo.findByUserId(userId).stream()
                 .map(UserRole::getRoleId)
                 .collect(Collectors.toSet());
+        log.info("loadWithRoles[user={}] roleIds en user_role: {} -> {}",
+                userId, roleIds.size(), roleIds);
+
         Set<String> codes = roleIds.isEmpty()
                 ? Set.of()
                 : new HashSet<>(roleResolver.resolveCodes(roleIds));
+        log.info("loadWithRoles[user={}] codes resueltos por roleResolver: {} -> {}",
+                userId, codes.size(), codes);
+
         user.setRoleCodes(codes);
         return user;
     }
