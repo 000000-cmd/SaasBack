@@ -29,8 +29,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Login y refresh son publicos
-                        .requestMatchers("/auth/login", "/auth/refresh").permitAll()
+                        // Spring Security ve los paths sin el context-path (/auth lo despoja
+                        // el servlet antes de que llegue aqui). Por eso son /login y /refresh,
+                        // no /auth/login. La URL publica sigue siendo /auth/login.
+                        .requestMatchers("/login", "/refresh").permitAll()
                         .requestMatchers("/actuator/**", "/api/info", "/api/version").permitAll()
                         .anyRequest().authenticated()
                 )

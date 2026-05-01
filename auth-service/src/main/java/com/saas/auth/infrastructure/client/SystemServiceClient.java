@@ -12,7 +12,11 @@ import java.util.UUID;
 
 /**
  * Feign client a system-service via Eureka (lb://system-service).
- * Solo expone los endpoints {@code /internal/**} (S2S, no traversed por gateway).
+ * Solo expone los endpoints {@code /system/internal/**} (S2S, no traversed por gateway).
+ *
+ * <p>El prefijo {@code /system} viene del {@code server.servlet.context-path}
+ * configurado en system-service. Spring Boot lo despoja antes de matchear el
+ * controller {@code /internal/**}.
  *
  * <p><b>Wire format</b>: usa {@code String} para los UUIDs (claves de Map y elementos
  * de Set). Asi evitamos depender de un {@code KeyDeserializer} de Jackson para UUID
@@ -22,9 +26,9 @@ import java.util.UUID;
 @FeignClient(name = "system-service", contextId = "system-service-internal")
 public interface SystemServiceClient {
 
-    @PostMapping("/internal/roles/codes")
+    @PostMapping("/system/internal/roles/codes")
     Map<String, String> resolveRoleCodes(@RequestBody Set<String> roleIds);
 
-    @GetMapping("/internal/roles/{roleId}/permissions/codes")
+    @GetMapping("/system/internal/roles/{roleId}/permissions/codes")
     Set<String> getPermissionCodesByRoleId(@PathVariable("roleId") UUID roleId);
 }

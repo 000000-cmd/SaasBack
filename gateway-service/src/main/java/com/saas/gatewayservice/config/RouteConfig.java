@@ -10,13 +10,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
 /**
- * Rutas explicitas (URL limpia, sin prefijo de service-id).
+ * Rutas explicitas. Estandar: el path arranca con el nombre del microservicio,
+ * que coincide con el {@code server.servlet.context-path} del downstream. El
+ * gateway no reescribe; pasa el path tal cual y Spring Boot lo despoja al
+ * matchear los controllers.
  *
  *   POST /auth/login              -> auth-service     (rate-limit estricto, key=IP)
- *   /auth/**, /users/**           -> auth-service     (rate-limit normal, key=user)
- *   /roles/**, /permissions/**,
- *   /menus/**, /system-lists/**,
- *   /constants/**                 -> system-service   (rate-limit normal, key=user)
+ *   /auth/**                       -> auth-service     (rate-limit normal, key=user)
+ *   /system/**                     -> system-service   (rate-limit normal, key=user)
  */
 @Configuration
 public class RouteConfig {
@@ -63,14 +64,13 @@ public class RouteConfig {
                                 .setKeyResolver(ipKeyResolver)))
                         .uri(authUri))
                 .route("auth", r -> r
-                        .path("/auth/**", "/users/**")
+                        .path("/auth/**")
                         .filters(f -> f.requestRateLimiter(c -> c
                                 .setRateLimiter(defaultRateLimiter)
                                 .setKeyResolver(userKeyResolver)))
                         .uri(authUri))
                 .route("system", r -> r
-                        .path("/roles/**", "/permissions/**", "/menus/**",
-                                "/system-lists/**", "/constants/**")
+                        .path("/system/**")
                         .filters(f -> f.requestRateLimiter(c -> c
                                 .setRateLimiter(defaultRateLimiter)
                                 .setKeyResolver(userKeyResolver)))

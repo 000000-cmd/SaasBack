@@ -14,11 +14,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * El prefijo {@code /auth} ya viene aplicado a nivel de servicio mediante
+ * {@code server.servlet.context-path=/auth}; por eso aqui no se declara
+ * {@code @RequestMapping}. El path publico final sigue siendo {@code /auth/login},
+ * {@code /auth/refresh}, etc.
+ */
 @RestController
-@RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
