@@ -1,15 +1,18 @@
 package com.saas.auth.application.service;
 
+import com.saas.auth.application.dto.event.UserEventPayload;
 import com.saas.auth.domain.model.User;
 import com.saas.auth.domain.model.UserRole;
 import com.saas.auth.domain.port.in.IUserUseCase;
 import com.saas.auth.domain.port.out.IRoleResolverPort;
 import com.saas.auth.domain.port.out.IUserRepositoryPort;
 import com.saas.auth.domain.port.out.IUserRoleRepositoryPort;
+import com.saas.common.events.EventTypes;
 import com.saas.common.exception.BusinessException;
 import com.saas.common.exception.DuplicateResourceException;
 import com.saas.common.exception.InvalidCredentialsException;
 import com.saas.common.exception.ResourceNotFoundException;
+import com.saas.common.outbox.OutboxPublisher;
 import com.saas.common.service.GenericCrudService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,16 +33,19 @@ public class UserService extends GenericCrudService<User, UUID> implements IUser
     private final IUserRoleRepositoryPort userRoleRepo;
     private final IRoleResolverPort roleResolver;
     private final PasswordEncoder passwordEncoder;
+    private final OutboxPublisher outboxPublisher;
 
     public UserService(IUserRepositoryPort userRepo,
                         IUserRoleRepositoryPort userRoleRepo,
                         IRoleResolverPort roleResolver,
-                        PasswordEncoder passwordEncoder) {
+                        PasswordEncoder passwordEncoder,
+                        OutboxPublisher outboxPublisher) {
         super(userRepo);
         this.userRepo = userRepo;
         this.userRoleRepo = userRoleRepo;
         this.roleResolver = roleResolver;
         this.passwordEncoder = passwordEncoder;
+        this.outboxPublisher = outboxPublisher;
     }
 
     @Override
@@ -86,7 +92,18 @@ public class UserService extends GenericCrudService<User, UUID> implements IUser
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
         if (user.getTheme() == null)        user.setTheme("light");
         if (user.getLanguageCode() == null) user.setLanguageCode("es-CO");
-        return create(user);
+        User userCreated = create(user);
+
+        // Emitir evento USER_CREATED
+        outboxPublisher.publish(
+                EventTypes.USER_CREATED,
+                null,
+                "user",
+                userCreated.getId(),
+                UserEventPayload.from(userCreated)
+        );
+
+        return userCreated;
     }
 
     @Override
@@ -111,6 +128,16 @@ public class UserService extends GenericCrudService<User, UUID> implements IUser
             throw new ResourceNotFoundException("Usuario", "Id", userId);
         }
         userRoleRepo.replaceRolesForUser(userId, roleIds);
+
+        User userWithNewRoles = loadWithRoles(userId);
+
+        outboxPublisher.publish(
+                EventTypes.USER_ROLES_CHANGED,
+                null,
+                "user",
+                userId,
+                UserEventPayload.from(userWithNewRoles)
+        );
     }
 
     @Override
@@ -136,5 +163,25 @@ public class UserService extends GenericCrudService<User, UUID> implements IUser
 
         user.setRoleCodes(codes);
         return user;
+    }
+
+    @Override
+    protected void onAfterUpdate(User existing, User updated) {
+        outboxPublisher.publish(
+                EventTypes.USER_UPDATED,
+                null,
+                "user",
+                updated.getId(),
+                UserEventPayload.from(updated));
+    }
+
+    @Override
+    protected void onAfterDelete(UUID id, User deletedSnapshot) {
+        outboxPublisher.publish(
+                EventTypes.USER_DELETED,
+                null,
+                "user",
+                id,
+                UserEventPayload.from(deletedSnapshot));
     }
 }

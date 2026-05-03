@@ -49,6 +49,15 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
     /** Hook opcional para validacion previa a actualizar. */
     protected void onBeforeUpdate(T existing, T incoming) { }
 
+    /** Hook opcional post-create (despues del save). Tipico: emitir evento al outbox. */
+    protected void onAfterCreate(T saved) { }
+
+    /** Hook opcional post-update. Tipico: emitir evento al outbox. */
+    protected void onAfterUpdate(T existing, T updated) { }
+
+    /** Hook opcional post-delete (soft). Tipico: emitir evento al outbox. */
+    protected void onAfterDelete(ID id, T deletedSnapshot) { }
+
     @Override
     @Transactional
     public T create(T entity) {
@@ -56,6 +65,7 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
         onBeforeCreate(entity);
         T saved = repository.save(entity);
         log.info("{} creado: id={}", getResourceName(), saved.getId());
+        onAfterCreate(saved);
         return saved;
     }
 
@@ -69,6 +79,7 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
         applyChanges(existing, incoming);
         T updated = repository.update(existing);
         log.info("{} actualizado: id={}", getResourceName(), id);
+        onAfterUpdate(existing, updated);
         return updated;
     }
 
@@ -85,14 +96,12 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
         return repository.findAll();
     }
 
-    @Override
     @Transactional
     public void delete(ID id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException(getResourceName(), "Id", id);
-        }
+        T snapshot = getById(id);
         repository.softDeleteById(id);
         log.info("{} eliminado (soft) id={}", getResourceName(), id);
+        onAfterDelete(id, snapshot);
     }
 
     @Override
@@ -100,7 +109,8 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
     public void toggleEnabled(ID id, boolean enabled) {
         T entity = getById(id);
         entity.setEnabled(enabled);
-        repository.update(entity);
+        T updated = repository.update(entity);
         log.info("{} id={} -> Enabled={}", getResourceName(), id, enabled);
+        onAfterUpdate(entity, updated);
     }
 }

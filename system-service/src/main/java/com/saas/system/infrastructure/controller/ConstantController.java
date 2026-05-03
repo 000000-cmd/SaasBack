@@ -33,7 +33,6 @@ public class ConstantController {
         return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(useCase.getById(id))));
     }
 
-    /** Lookup tipico desde codigo en runtime: /constants/code/MAYORIA_EDAD */
     @GetMapping("/code/{code}")
     public ResponseEntity<ApiResponse<ConstantResponse>> getByCode(@PathVariable String code) {
         return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(useCase.getByCode(code))));
