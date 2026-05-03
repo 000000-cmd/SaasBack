@@ -442,6 +442,53 @@ services:
         max-file: "5"
 
   # ===========================================
+  # CAPA 3: SEARCH SERVICE
+  # ===========================================
+  search-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: search-service
+    image: saas-search:latest
+    container_name: saas-search
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      JAVA_OPTS: >-
+        -Xms256m
+        -Xmx512m
+        -XX:+UseG1GC
+        -XX:+UseContainerSupport
+        -XX:MaxGCPauseMillis=100
+        -Djava.security.egd=file:/dev/./urandom
+    ports:
+      - "8085:8085"
+    networks:
+      - saas-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      es-01:
+        condition: service_healthy
+      kafka-1:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8085/search/actuator/health" ]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # ===========================================
   # CAPA 3: SYSTEM SERVICE
   # ===========================================
   system-service:
@@ -525,6 +572,8 @@ services:
       auth-service:
         condition: service_healthy
       system-service:
+        condition: service_healthy
+      search-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]

@@ -17,6 +17,7 @@ COPY discovery-service/pom.xml discovery-service/
 COPY gateway-service/pom.xml gateway-service/
 COPY auth-service/pom.xml auth-service/
 COPY system-service/pom.xml system-service/
+COPY search-service/pom.xml search-service/
 
 RUN mvn dependency:go-offline -B -q || true
 
@@ -38,6 +39,7 @@ COPY discovery-service/ discovery-service/
 COPY gateway-service/ gateway-service/
 COPY auth-service/ auth-service/
 COPY system-service/ system-service/
+COPY search-service/ search-service/
 
 RUN echo "=== Compilando TODOS los servicios ===" && \
     mvn clean package -DskipTests -B && \
@@ -117,4 +119,16 @@ EXPOSE 8083
 ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8083/actuator/health || exit 1
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+
+# ===========================================
+# STAGE 9: SEARCH SERVICE
+# ===========================================
+FROM base-runtime AS search-service
+COPY --from=builder --chown=appuser:appgroup /app/search-service/target/*.jar app.jar
+USER appuser
+EXPOSE 8085
+ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8085/search/actuator/health || exit 1
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

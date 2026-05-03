@@ -28,6 +28,9 @@ public class RouteConfig {
     @Value("${saas.gateway.services.system-uri:lb://system-service}")
     private String systemUri;
 
+    @Value("${saas.gateway.services.search-uri:lb://search-service}")
+    private String searchUri;
+
     @Bean("loginRateLimiter")
     public RedisRateLimiter loginRateLimiter(
             @Value("${saas.gateway.rate-limit.login.replenish-rate:2}") int replenish,
@@ -75,6 +78,12 @@ public class RouteConfig {
                                 .setRateLimiter(defaultRateLimiter)
                                 .setKeyResolver(userKeyResolver)))
                         .uri(systemUri))
+                .route("search", r -> r
+                        .path("/search/**")
+                        .filters(f -> f.requestRateLimiter(c -> c
+                                .setRateLimiter(defaultRateLimiter)
+                                .setKeyResolver(userKeyResolver)))
+                        .uri(searchUri))
                 .build();
     }
 }

@@ -1,5 +1,6 @@
 package com.saas.common.audit;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
@@ -12,6 +13,11 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
  * con el timestamp del sistema.
  */
 @Configuration
+@ConditionalOnProperty(
+        prefix = "saas.jpa",
+        name = "auditing-enabled",
+        havingValue = "true",
+        matchIfMissing = true)
 @EnableJpaAuditing(auditorAwareRef = "auditorAware")
 public class JpaAuditingConfig {
 }

@@ -4,13 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
-
 import java.time.Instant;
 import java.util.UUID;
 
 @Slf4j
 @Component
+@ConditionalOnBean(OutboxEventRepository.class)
 @RequiredArgsConstructor
 public class OutboxPublisherImpl implements OutboxPublisher {
 
