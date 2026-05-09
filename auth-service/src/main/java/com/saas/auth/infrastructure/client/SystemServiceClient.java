@@ -12,23 +12,28 @@ import java.util.UUID;
 
 /**
  * Feign client a system-service via Eureka (lb://system-service).
- * Solo expone los endpoints {@code /system/internal/**} (S2S, no traversed por gateway).
+ * Solo expone los endpoints {@code /internal/**} (S2S, no traversed por gateway).
  *
- * <p>El prefijo {@code /system} viene del {@code server.servlet.context-path}
- * configurado en system-service. Spring Boot lo despoja antes de matchear el
- * controller {@code /internal/**}.
+ * <p>El atributo {@code path = "/system"} corresponde al
+ * {@code server.servlet.context-path} de system-service. Asi cada
+ * {@code @PostMapping} / {@code @GetMapping} solo declara el path relativo
+ * (sin prefijo). Si algun dia se cambia el context path, solo se modifica aqui.
  *
  * <p><b>Wire format</b>: usa {@code String} para los UUIDs (claves de Map y elementos
  * de Set). Asi evitamos depender de un {@code KeyDeserializer} de Jackson para UUID
  * en {@code Map<UUID,String>}, problema reproducible con Feign + Spring Cloud 2025.x.
  * Los adapters convierten UUID&lt;-&gt;String en el borde.
  */
-@FeignClient(name = "system-service", contextId = "system-service-internal")
+@FeignClient(
+        name = "system-service",
+        contextId = "system-service-internal",
+        path = "/system"
+)
 public interface SystemServiceClient {
 
-    @PostMapping("/system/internal/roles/codes")
+    @PostMapping("/internal/roles/codes")
     Map<String, String> resolveRoleCodes(@RequestBody Set<String> roleIds);
 
-    @GetMapping("/system/internal/roles/{roleId}/permissions/codes")
+    @GetMapping("/internal/roles/{roleId}/permissions/codes")
     Set<String> getPermissionCodesByRoleId(@PathVariable("roleId") UUID roleId);
 }

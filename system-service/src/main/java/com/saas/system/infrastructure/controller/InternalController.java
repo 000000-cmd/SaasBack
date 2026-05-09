@@ -1,30 +1,24 @@
 package com.saas.system.infrastructure.controller;
 
+import com.saas.system.application.dto.event.RoleEventPayload;       // ← AGREGAR
 import com.saas.system.domain.model.Role;
 import com.saas.system.domain.port.in.IRolePermissionUseCase;
 import com.saas.system.domain.port.in.IRoleUseCase;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;                                      // ← AGREGAR
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;                                                  // ← AGREGAR
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Endpoints S2S (service-to-service) consumidos por auth-service via Feign.
- * Sin {@code ApiResponse} envolvente, sin auth -- la red interna los protege.
- * En la SecurityConfig {@code /internal/**} esta permitAll.
- *
- * <p><b>Wire format</b>: los UUIDs se intercambian como {@code String} (no como
- * tipo UUID nativo) para evitar problemas de {@code KeyDeserializer} en Jackson
- * cuando los UUIDs son claves de Map. La conversion a {@code UUID} ocurre dentro
- * del controller.
- */
 @RestController
 @RequestMapping("/internal")
 @RequiredArgsConstructor
+@Slf4j                                                                  // ← AGREGAR
 public class InternalController {
 
     private final IRoleUseCase roleUseCase;
@@ -45,5 +39,20 @@ public class InternalController {
     @GetMapping("/roles/{roleId}/permissions/codes")
     public Set<String> getPermissionCodesByRoleId(@PathVariable UUID roleId) {
         return rolePermUseCase.getPermissionCodesByRoleId(roleId);
+    }
+
+    @GetMapping("/roles/all")
+    public List<RoleEventPayload> listAllForReindex(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "500") int size) {
+        log.info("Reindex fetch roles: page={} size={}", page, size);
+        return roleUseCase.findAllPaged(page, size).stream()
+                .map(RoleEventPayload::from)
+                .toList();
+    }
+
+    @GetMapping("/roles/count")
+    public Map<String, Long> countRoles() {
+        return Map.of("total", roleUseCase.count());
     }
 }

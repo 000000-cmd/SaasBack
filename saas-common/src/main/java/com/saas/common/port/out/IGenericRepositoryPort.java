@@ -38,4 +38,9 @@ public interface IGenericRepositoryPort<T extends BaseDomain, ID> {
      * dependencias o sea estrictamente necesario.
      */
     void hardDeleteById(ID id);
+
+    List<T> findAllPaged(int page, int size);
+
+    long count();
+
 }

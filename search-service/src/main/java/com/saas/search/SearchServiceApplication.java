@@ -3,6 +3,7 @@ package com.saas.search;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
 /**
  * Read model del sistema. Consume eventos de Kafka (topic {@code domain.events})
@@ -16,6 +17,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
         "com.saas.common"
 })
 @EnableDiscoveryClient
+@EnableFeignClients(basePackages = "com.saas.search.infrastructure.client")
 public class SearchServiceApplication {
 
     public static void main(String[] args) {

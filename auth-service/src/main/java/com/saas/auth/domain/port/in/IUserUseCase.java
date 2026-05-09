@@ -3,6 +3,7 @@ package com.saas.auth.domain.port.in;
 import com.saas.auth.domain.model.User;
 import com.saas.common.port.in.IGenericUseCase;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;

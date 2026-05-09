@@ -2,6 +2,7 @@ com\saas\common\audit\JpaAuditingConfig.class
 com\saas\common\mapper\IRequestMapper.class
 com\saas\common\dto\ServiceInfoDTO$ServiceInfoDTOBuilder.class
 com\saas\common\mapper\BaseMapStructConfig.class
+com\saas\common\persistence\BaseJpaRepositoryAdapter.class
 com\saas\common\dto\ApiResponse$ApiResponseBuilder.class
 com\saas\common\dto\PagedResponse.class
 com\saas\common\model\ICodeable.class

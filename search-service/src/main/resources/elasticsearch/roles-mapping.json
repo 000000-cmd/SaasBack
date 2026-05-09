@@ -1,0 +1,36 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 1,
+    "refresh_interval": "1s",
+    "analysis": {
+      "analyzer": {
+        "spanish_text": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id":           { "type": "keyword" },
+      "businessId":   { "type": "keyword" },
+      "createdAt":    { "type": "date" },
+      "updatedAt":    { "type": "date" },
+      "docVersion":   { "type": "long" },
+      "code":         { "type": "keyword" },
+      "name":         {
+        "type": "text",
+        "analyzer": "spanish_text",
+        "fields": {
+          "keyword": { "type": "keyword" }
+        }
+      },
+      "description":  { "type": "text", "analyzer": "spanish_text" },
+      "enabled":      { "type": "boolean" }
+    }
+  }
+}

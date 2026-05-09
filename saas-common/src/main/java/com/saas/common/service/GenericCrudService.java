@@ -113,4 +113,17 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
         log.info("{} id={} -> Enabled={}", getResourceName(), id, enabled);
         onAfterUpdate(entity, updated);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<T> findAllPaged(int page, int size) {
+        return repository.findAllPaged(page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long count() {
+        return repository.count();
+    }
+
 }

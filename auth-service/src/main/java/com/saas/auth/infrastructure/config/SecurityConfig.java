@@ -34,6 +34,9 @@ public class SecurityConfig {
                         // no /auth/login. La URL publica sigue siendo /auth/login.
                         .requestMatchers("/login", "/refresh").permitAll()
                         .requestMatchers("/actuator/**", "/api/info", "/api/version").permitAll()
+                        // Endpoints S2S (consumidos por search-service via Feign para reindex).
+                        // No traversed por gateway -- la red interna los protege.
+                        .requestMatchers("/internal/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)

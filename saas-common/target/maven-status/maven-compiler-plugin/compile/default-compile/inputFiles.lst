@@ -27,6 +27,7 @@ C:\saas-back\saas-common\src\main\java\com\saas\common\outbox\OutboxPublisher.ja
 C:\saas-back\saas-common\src\main\java\com\saas\common\outbox\OutboxPublisherImpl.java
 C:\saas-back\saas-common\src\main\java\com\saas\common\outbox\OutboxRelay.java
 C:\saas-back\saas-common\src\main\java\com\saas\common\persistence\BaseEntity.java
+C:\saas-back\saas-common\src\main\java\com\saas\common\persistence\BaseJpaRepositoryAdapter.java
 C:\saas-back\saas-common\src\main\java\com\saas\common\port\in\ICodeUseCase.java
 C:\saas-back\saas-common\src\main\java\com\saas\common\port\in\IGenericUseCase.java
 C:\saas-back\saas-common\src\main\java\com\saas\common\port\out\ICodeRepositoryPort.java

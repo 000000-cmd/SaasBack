@@ -6,72 +6,32 @@ import com.saas.auth.infrastructure.persistence.entity.UserEntity;
 import com.saas.auth.infrastructure.persistence.entity.UserRoleEntity;
 import com.saas.auth.infrastructure.persistence.mapper.UserRolePersistenceMapper;
 import com.saas.auth.infrastructure.persistence.repository.JpaUserRoleRepository;
-import com.saas.common.exception.ResourceNotFoundException;
-import lombok.RequiredArgsConstructor;
+import com.saas.common.persistence.BaseJpaRepositoryAdapter;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Repository
-@RequiredArgsConstructor
-public class UserRoleRepositoryAdapter implements IUserRoleRepositoryPort {
+public class UserRoleRepositoryAdapter
+        extends BaseJpaRepositoryAdapter<UserRole, UserRoleEntity, UUID>
+        implements IUserRoleRepositoryPort {
 
     private final JpaUserRoleRepository jpa;
-    private final UserRolePersistenceMapper mapper;
 
-    @Override
-    public UserRole save(UserRole entity) {
-        return mapper.toDomain(jpa.save(mapper.toEntity(entity)));
-    }
-
-    @Override
-    @Transactional
-    public UserRole update(UserRole entity) {
-        UserRoleEntity existing = jpa.findById(entity.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("UserRole", "Id", entity.getId()));
-        mapper.updateEntityFromDomain(entity, existing);
-        return mapper.toDomain(jpa.save(existing));
-    }
-
-    @Override
-    public Optional<UserRole> findById(UUID id) {
-        return jpa.findById(id).map(mapper::toDomain);
-    }
-
-    @Override
-    public boolean existsById(UUID id) {
-        return jpa.existsById(id);
-    }
-
-    @Override
-    public List<UserRole> findAll() {
-        return mapper.toDomainList(jpa.findAll());
-    }
-
-    @Override
-    @Transactional
-    public void softDeleteById(UUID id) {
-        jpa.findById(id).ifPresent(e -> {
-            e.setEnabled(false);
-            e.setVisible(false);
-            jpa.save(e);
-        });
-    }
-
-    @Override
-    public void hardDeleteById(UUID id) {
-        jpa.deleteById(id);
+    public UserRoleRepositoryAdapter(JpaUserRoleRepository jpa,
+                                     UserRolePersistenceMapper mapper) {
+        super(jpa, mapper, "UserRole");
+        this.jpa = jpa;
     }
 
     @Override
     public List<UserRole> findByUserId(UUID userId) {
-        return mapper.toDomainList(jpa.findByUserId(userId));
+        return getMapper().toDomainList(jpa.findByUserId(userId));
     }
 
     @Override

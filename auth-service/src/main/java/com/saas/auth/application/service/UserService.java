@@ -1,6 +1,7 @@
 package com.saas.auth.application.service;
 
 import com.saas.auth.application.dto.event.UserEventPayload;
+import com.saas.auth.application.mapper.UserMapper;
 import com.saas.auth.domain.model.User;
 import com.saas.auth.domain.model.UserRole;
 import com.saas.auth.domain.port.in.IUserUseCase;
@@ -15,14 +16,12 @@ import com.saas.common.exception.ResourceNotFoundException;
 import com.saas.common.outbox.OutboxPublisher;
 import com.saas.common.service.GenericCrudService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -34,18 +33,20 @@ public class UserService extends GenericCrudService<User, UUID> implements IUser
     private final IRoleResolverPort roleResolver;
     private final PasswordEncoder passwordEncoder;
     private final OutboxPublisher outboxPublisher;
+    private final UserMapper userMapper;
 
     public UserService(IUserRepositoryPort userRepo,
-                        IUserRoleRepositoryPort userRoleRepo,
-                        IRoleResolverPort roleResolver,
-                        PasswordEncoder passwordEncoder,
-                        OutboxPublisher outboxPublisher) {
+                       IUserRoleRepositoryPort userRoleRepo,
+                       IRoleResolverPort roleResolver,
+                       PasswordEncoder passwordEncoder,
+                       OutboxPublisher outboxPublisher, UserMapper userMapper) {
         super(userRepo);
         this.userRepo = userRepo;
         this.userRoleRepo = userRoleRepo;
         this.roleResolver = roleResolver;
         this.passwordEncoder = passwordEncoder;
         this.outboxPublisher = outboxPublisher;
+        this.userMapper = userMapper;
     }
 
     @Override

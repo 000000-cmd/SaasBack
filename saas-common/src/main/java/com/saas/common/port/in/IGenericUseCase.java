@@ -43,4 +43,8 @@ public interface IGenericUseCase<T extends BaseDomain, ID> {
      * @throws ResourceNotFoundException si no existe
      */
     void toggleEnabled(ID id, boolean enabled);
+
+    List<T> findAllPaged(int page, int size);
+
+    long count();
 }

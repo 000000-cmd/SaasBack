@@ -3,6 +3,7 @@ package com.saas.auth.domain.port.out;
 import com.saas.auth.domain.model.User;
 import com.saas.common.port.out.IGenericRepositoryPort;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,4 +25,6 @@ public interface IUserRepositoryPort extends IGenericRepositoryPort<User, UUID> 
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);
+
+
 }
