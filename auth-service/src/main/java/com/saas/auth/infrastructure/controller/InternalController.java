@@ -25,7 +25,12 @@ public class InternalController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "500") int size) {
         log.info("Reindex fetch users: page={} size={}", page, size);
+        // findAllPaged NO carga roleCodes; hidratamos por user con loadWithRoles.
+        // Para 1000s de users esto hace 1 llamada Feign por user al system-service,
+        // pero el cache Caffeine del RoleResolverFeignAdapter mitiga (5 min TTL).
+        // Si crece a millones, optimizar con bulk fetch + un solo Feign call batch.
         return userUseCase.findAllPaged(page, size).stream()
+                .map(u -> userUseCase.loadWithRoles(u.getId()))
                 .map(UserEventPayload::from)
                 .toList();
     }

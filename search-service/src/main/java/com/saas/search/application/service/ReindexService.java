@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
@@ -78,7 +79,7 @@ public class ReindexService {
     private String entitiesProperty;
 
     @EventListener(ApplicationReadyEvent.class)
-    @Order(10)
+    @Order(Ordered.LOWEST_PRECEDENCE)  // ← debe correr DESPUES que IndexBootstrap haya creado indices/aliases
     public void reindexOnStartup() {
         if (!reindexEnabled) {
             log.info("Reindex en startup DESACTIVADO (saas.search.reindex.enabled=false)");

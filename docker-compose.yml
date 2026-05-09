@@ -218,6 +218,22 @@ services:
   # ===========================================
   # CAPA 1.5: ELASTICSEARCH CLUSTER (3 nodos)
   # ===========================================
+  # ===========================================
+  # ELASTICSEARCH - 1 NODO (DEV)
+  # ===========================================
+  # En dev usamos un solo nodo con discovery.type=single-node para ahorrar RAM.
+  # El cluster queda en estado "yellow" (replicas no asignables con 1 nodo)
+  # pero es 100% funcional para desarrollo.
+  #
+  # PARA PRODUCCION (VPS):
+  #   1. Descomentar es-02 y es-03 abajo.
+  #   2. En es-01: cambiar a 'discovery.seed_hosts=es-02,es-03' y
+  #      'cluster.initial_master_nodes=es-01,es-02,es-03'.
+  #   3. Quitar 'discovery.type=single-node' de es-01.
+  #   4. Subir ES_JAVA_OPTS a 1g o mas por nodo.
+  #   5. En application-docker.properties:
+  #      spring.elasticsearch.uris=http://es-01:9200,http://es-02:9200,http://es-03:9200
+  # ===========================================
   es-01:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
     container_name: saas-es-01
@@ -225,13 +241,15 @@ services:
     environment:
       - node.name=es-01
       - cluster.name=saas-es-cluster
-      - discovery.seed_hosts=es-02,es-03
-      - cluster.initial_master_nodes=es-01,es-02,es-03
+      - discovery.type=single-node
       - node.roles=master,data,ingest
       - bootstrap.memory_lock=true
-      - xpack.security.enabled=false             # dev: false. prod: true (ver sección Operaciones)
+      - xpack.security.enabled=false
       - xpack.security.transport.ssl.enabled=false
+      # Heap 1GB en dev (single-node). En prod (3 nodos) bajar a 512m por nodo.
       - ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms1g -Xmx1g}
+    mem_limit: 1500m
+    mem_reservation: 1g
     ulimits:
       memlock: { soft: -1, hard: -1 }
       nofile:  { soft: 65536, hard: 65536 }
@@ -240,73 +258,83 @@ services:
     ports: ["9200:9200"]
     networks: [saas-network]
     healthcheck:
+      # En single-node el cluster queda yellow (sin replicas posibles).
+      # Solo fallamos en RED (cluster real roto).
       test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'"]
       interval: 15s
       timeout: 10s
-      retries: 10
-      start_period: 60s
+      retries: 15
+      start_period: 90s
 
-  es-02:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
-    container_name: saas-es-02
-    restart: unless-stopped
-    environment:
-      - node.name=es-02
-      - cluster.name=saas-es-cluster
-      - discovery.seed_hosts=es-01,es-03
-      - cluster.initial_master_nodes=es-01,es-02,es-03
-      - node.roles=master,data,ingest
-      - bootstrap.memory_lock=true
-      - xpack.security.enabled=false
-      - xpack.security.transport.ssl.enabled=false
-      - ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms1g -Xmx1g}
-    ulimits:
-      memlock: { soft: -1, hard: -1 }
-      nofile:  { soft: 65536, hard: 65536 }
-    volumes:
-      - es_02_data:/usr/share/elasticsearch/data
-    networks: [saas-network]
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
-
-  es-03:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
-    container_name: saas-es-03
-    restart: unless-stopped
-    environment:
-      - node.name=es-03
-      - cluster.name=saas-es-cluster
-      - discovery.seed_hosts=es-01,es-02
-      - cluster.initial_master_nodes=es-01,es-02,es-03
-      - node.roles=master,data,ingest
-      - bootstrap.memory_lock=true
-      - xpack.security.enabled=false
-      - xpack.security.transport.ssl.enabled=false
-      - ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms1g -Xmx1g}
-    ulimits:
-      memlock: { soft: -1, hard: -1 }
-      nofile:  { soft: 65536, hard: 65536 }
-    volumes:
-      - es_03_data:/usr/share/elasticsearch/data
-    networks: [saas-network]
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
+  # es-02 y es-03 comentados para dev. Descomentar para prod (ver instrucciones arriba).
+  #
+  # es-02:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+  #   container_name: saas-es-02
+  #   restart: unless-stopped
+  #   environment:
+  #     - node.name=es-02
+  #     - cluster.name=saas-es-cluster
+  #     - discovery.seed_hosts=es-01,es-03
+  #     - cluster.initial_master_nodes=es-01,es-02,es-03
+  #     - node.roles=master,data,ingest
+  #     - bootstrap.memory_lock=true
+  #     - xpack.security.enabled=false
+  #     - xpack.security.transport.ssl.enabled=false
+  #     - ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms1g -Xmx1g}
+  #   mem_limit: 1500m
+  #   mem_reservation: 1g
+  #   ulimits:
+  #     memlock: { soft: -1, hard: -1 }
+  #     nofile:  { soft: 65536, hard: 65536 }
+  #   volumes:
+  #     - es_02_data:/usr/share/elasticsearch/data
+  #   networks: [saas-network]
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'"]
+  #     interval: 15s
+  #     timeout: 10s
+  #     retries: 15
+  #     start_period: 90s
+  #
+  # es-03:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+  #   container_name: saas-es-03
+  #   restart: unless-stopped
+  #   environment:
+  #     - node.name=es-03
+  #     - cluster.name=saas-es-cluster
+  #     - discovery.seed_hosts=es-01,es-02
+  #     - cluster.initial_master_nodes=es-01,es-02,es-03
+  #     - node.roles=master,data,ingest
+  #     - bootstrap.memory_lock=true
+  #     - xpack.security.enabled=false
+  #     - xpack.security.transport.ssl.enabled=false
+  #     - ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms1g -Xmx1g}
+  #   mem_limit: 1500m
+  #   mem_reservation: 1g
+  #   ulimits:
+  #     memlock: { soft: -1, hard: -1 }
+  #     nofile:  { soft: 65536, hard: 65536 }
+  #   volumes:
+  #     - es_03_data:/usr/share/elasticsearch/data
+  #   networks: [saas-network]
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'"]
+  #     interval: 15s
+  #     timeout: 10s
+  #     retries: 15
+  #     start_period: 90s
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.17.0
     container_name: saas-kibana
     restart: unless-stopped
     environment:
-      - ELASTICSEARCH_HOSTS=["http://es-01:9200","http://es-02:9200","http://es-03:9200"]
+      # Dev: solo es-01. En prod cambiar a array con los 3.
+      - ELASTICSEARCH_HOSTS=http://es-01:9200
       - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY}
+    mem_limit: 700m
     ports: ["5601:5601"]
     depends_on:
       es-01: { condition: service_healthy }
@@ -429,8 +457,10 @@ services:
         condition: service_healthy
       discovery-service:
         condition: service_healthy
+      kafka-1:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8082/auth/actuator/health"]
       interval: 15s
       timeout: 10s
       retries: 15
@@ -524,8 +554,10 @@ services:
         condition: service_healthy
       discovery-service:
         condition: service_healthy
+      kafka-1:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8083/system/actuator/health"]
       interval: 15s
       timeout: 10s
       retries: 15
@@ -608,5 +640,6 @@ volumes:
   kafka_2_data:  { driver: local }
   kafka_3_data:  { driver: local }
   es_01_data:    { driver: local }
-  es_02_data:    { driver: local }
-  es_03_data:    { driver: local }
+  # Para prod (3 nodos), descomentar:
+  # es_02_data:    { driver: local }
+  # es_03_data:    { driver: local }

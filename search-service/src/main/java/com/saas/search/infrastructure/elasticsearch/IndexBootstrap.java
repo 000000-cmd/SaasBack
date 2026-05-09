@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
@@ -44,6 +46,7 @@ public class IndexBootstrap {
      * que cualquier dependencia diferida tambien este arriba.
      */
     @EventListener(ApplicationReadyEvent.class)
+    @Order(Ordered.HIGHEST_PRECEDENCE)   // ← debe correr ANTES que ReindexService
     public void boostrap() {
         log.info("IndexBootstrap: verificando indices y aliases...");
         for (IndexSpec spec : SPECS){
