@@ -109,7 +109,6 @@ Thumbs.db
 # BACKUPS
 # ===========================================
 /opt/saas-backups/
-*.sql
 *.sql.gz
 *.bak
 *.backup
