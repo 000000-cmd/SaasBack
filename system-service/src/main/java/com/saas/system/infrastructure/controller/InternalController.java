@@ -1,15 +1,15 @@
 package com.saas.system.infrastructure.controller;
 
-import com.saas.system.application.dto.event.RoleEventPayload;       // ← AGREGAR
+import com.saas.system.application.dto.event.RoleEventPayload;
 import com.saas.system.domain.model.Role;
 import com.saas.system.domain.port.in.IRolePermissionUseCase;
 import com.saas.system.domain.port.in.IRoleUseCase;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;                                      // ← AGREGAR
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
-import java.util.List;                                                  // ← AGREGAR
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/internal")
 @RequiredArgsConstructor
-@Slf4j                                                                  // ← AGREGAR
+@Slf4j
 public class InternalController {
 
     private final IRoleUseCase roleUseCase;
