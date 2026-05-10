@@ -57,7 +57,7 @@ public class KafkaProducerConfig {
         p.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 120_000);
 
         // --- Performance ---
-        p.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+        p.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
         p.put(ProducerConfig.LINGER_MS_CONFIG, 10);
         p.put(ProducerConfig.BATCH_SIZE_CONFIG, 32_768);
 
