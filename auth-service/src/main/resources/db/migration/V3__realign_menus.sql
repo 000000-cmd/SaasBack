@@ -1,21 +1,19 @@
 -- =====================================================================
--- V3__realign_menus.sql (CORREGIDO)
--- Idempotente: no falla si ya se ejecutó antes
--- Evita duplicados y errores por FK
+-- V3__realign_menus.sql
+-- Solo menus de administracion (/admin/*). Tenant queda fuera por ahora.
+-- Idempotente: UPSERT por Id.
 -- =====================================================================
 
 SET @now = NOW(6);
 
 -- ---------------------------------------------------------------------
--- 1. MENUS (UPSERT SEGURO)
+-- 1. MENUS ADMIN (UPSERT SEGURO)
 -- ---------------------------------------------------------------------
 INSERT INTO menu (
     Id, Code, Name, Icon, Route, ParentId,
     DisplayOrder, Enabled, Visible,
     AuditUser, AuditDate, CreatedDate
 ) VALUES
-
--- ================= ADMIN =================
 
 ('77770001-0000-0000-0000-000000000001', 'ADMIN_DASHBOARD', 'Panel', 'activity', '/admin/dashboard', NULL, 1, TRUE, TRUE, NULL, @now, @now),
 
@@ -34,30 +32,7 @@ INSERT INTO menu (
 ('77770002-0000-0000-0000-000000000033', 'ADMIN_AUDIT', 'Auditoria', 'scroll-text', '/admin/audit', '77770001-0000-0000-0000-000000000030', 3, TRUE, TRUE, NULL, @now, @now),
 
 ('77770001-0000-0000-0000-000000000040', 'ADMIN_PREFS_GROUP', 'Preferencias', 'settings', NULL, NULL, 9, TRUE, TRUE, NULL, @now, @now),
-('77770002-0000-0000-0000-000000000041', 'ADMIN_PROFILE', 'Mi perfil', 'user', '/admin/profile', '77770001-0000-0000-0000-000000000040', 1, TRUE, TRUE, NULL, @now, @now),
-
--- ================= TENANT =================
-
-('77770001-1000-0000-0000-000000000001', 'TENANT_OPS_GROUP', 'Operacion', 'activity', NULL, NULL, 1, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000002', 'TENANT_DASHBOARD', 'Panel', 'activity', '/tenant/dashboard', '77770001-1000-0000-0000-000000000001', 1, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000003', 'TENANT_AGENDA', 'Agenda del dia', 'clock', '/tenant/citas/agenda', '77770001-1000-0000-0000-000000000001', 2, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000004', 'TENANT_HISTORY', 'Historial', 'activity', '/tenant/citas/historial', '77770001-1000-0000-0000-000000000001', 3, TRUE, TRUE, NULL, @now, @now),
-
-('77770001-1000-0000-0000-000000000010', 'TENANT_TEAM_GROUP', 'Equipo', 'users', NULL, NULL, 2, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000011', 'TENANT_EMPLOYEES', 'Empleados', 'users', '/tenant/empleados', '77770001-1000-0000-0000-000000000010', 1, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000012', 'TENANT_SHIFTS', 'Turnos', 'clock', '/tenant/empleados/turnos', '77770001-1000-0000-0000-000000000010', 2, TRUE, TRUE, NULL, @now, @now),
-
-('77770001-1000-0000-0000-000000000020', 'TENANT_BIZ_GROUP', 'Negocio', 'package', NULL, NULL, 3, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000021', 'TENANT_PRODUCTS', 'Productos', 'package', '/tenant/inventario/productos', '77770001-1000-0000-0000-000000000020', 1, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000022', 'TENANT_STOCK', 'Alertas stock', 'alert-triangle', '/tenant/inventario/alertas', '77770001-1000-0000-0000-000000000020', 2, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000023', 'TENANT_PAYROLL', 'Nomina', 'wallet', '/tenant/nomina', '77770001-1000-0000-0000-000000000020', 3, TRUE, TRUE, NULL, @now, @now),
-
-('77770001-1000-0000-0000-000000000030', 'TENANT_CFG_GROUP', 'Configuracion', 'settings', NULL, NULL, 4, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000031', 'TENANT_CFG_BIZ', 'Ajustes negocio', 'settings', '/tenant/configuracion', '77770001-1000-0000-0000-000000000030', 1, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000032', 'TENANT_SERVICES', 'Tipos de servicio', 'scissors', '/tenant/configuracion/servicios', '77770001-1000-0000-0000-000000000030', 2, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000033', 'TENANT_DEDUCTIONS', 'Deducciones', 'minus-circle', '/tenant/configuracion/deducciones', '77770001-1000-0000-0000-000000000030', 3, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000034', 'TENANT_INTEGRATIONS', 'Integraciones', 'message-circle', '/tenant/configuracion/integraciones', '77770001-1000-0000-0000-000000000030', 4, TRUE, TRUE, NULL, @now, @now),
-('77770002-1000-0000-0000-000000000035', 'TENANT_PROFILE', 'Mi perfil', 'user', '/tenant/profile', '77770001-1000-0000-0000-000000000030', 9, TRUE, TRUE, NULL, @now, @now)
+('77770002-0000-0000-0000-000000000041', 'ADMIN_PROFILE', 'Mi perfil', 'user', '/admin/profile', '77770001-0000-0000-0000-000000000040', 1, TRUE, TRUE, NULL, @now, @now)
 
 ON DUPLICATE KEY UPDATE
                      Name = VALUES(Name),
@@ -70,10 +45,8 @@ ON DUPLICATE KEY UPDATE
                      AuditDate = VALUES(AuditDate);
 
 -- ---------------------------------------------------------------------
--- 2. MENU_ROLE (SIN DUPLICAR)
+-- 2. MENU_ROLE - ADMIN (idempotente)
 -- ---------------------------------------------------------------------
-
--- ADMIN
 INSERT INTO menu_role (Id, MenuId, RoleId, Enabled, Visible, AuditUser, AuditDate, CreatedDate)
 SELECT UUID(), m.Id, '11111111-0000-0000-0000-000000000001', TRUE, TRUE, NULL, @now, @now
 FROM menu m
@@ -82,15 +55,4 @@ WHERE (m.Id LIKE '77770001-0000-%' OR m.Id LIKE '77770002-0000-%')
     SELECT 1 FROM menu_role mr
     WHERE mr.MenuId = m.Id
       AND mr.RoleId = '11111111-0000-0000-0000-000000000001'
-);
-
--- USER
-INSERT INTO menu_role (Id, MenuId, RoleId, Enabled, Visible, AuditUser, AuditDate, CreatedDate)
-SELECT UUID(), m.Id, '11111111-0000-0000-0000-000000000002', TRUE, TRUE, NULL, @now, @now
-FROM menu m
-WHERE (m.Id LIKE '77770001-1000-%' OR m.Id LIKE '77770002-1000-%')
-  AND NOT EXISTS (
-    SELECT 1 FROM menu_role mr
-    WHERE mr.MenuId = m.Id
-      AND mr.RoleId = '11111111-0000-0000-0000-000000000002'
 );

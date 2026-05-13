@@ -17,6 +17,7 @@ com\saas\common\events\EventEnvelope.class
 com\saas\common\exception\GlobalExceptionHandler.class
 com\saas\common\mapper\IResponseMapper.class
 com\saas\common\model\IIdentifiable.class
+com\saas\common\dto\ServiceInfoDTO$DependencyStatus.class
 com\saas\common\exception\InvalidCredentialsException.class
 com\saas\common\exception\ResourceNotFoundException.class
 com\saas\common\outbox\OutboxEvent.class
@@ -29,6 +30,7 @@ com\saas\common\outbox\OutboxEvent$OutboxEventBuilder.class
 com\saas\common\port\out\IGenericRepositoryPort.class
 com\saas\common\dto\PagedResponse$PagedResponseBuilder.class
 com\saas\common\audit\AuditorAwareImpl.class
+com\saas\common\dto\ServiceInfoDTO$DependencyStatus$DependencyStatusBuilder.class
 com\saas\common\util\StringUtils.class
 com\saas\common\outbox\OutboxEventRepository.class
 com\saas\common\kafka\KafkaProducerConfig.class

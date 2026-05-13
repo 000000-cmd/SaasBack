@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 /**
  * Constante de configuracion global. Value se almacena siempre como STRING; el
@@ -23,6 +24,7 @@ import lombok.Setter;
 @Builder
 @Entity
 @Table(name = "constant")
+@SQLRestriction("Visible = 1")
 public class ConstantEntity extends BaseEntity {
 
     @Column(name = "Code", nullable = false, length = 80)

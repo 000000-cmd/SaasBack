@@ -89,6 +89,26 @@
     <build>
         <pluginManagement>
             <plugins>
+                <!--
+                  spring-boot-maven-plugin con build-info: genera META-INF/build-info.properties
+                  con la version del proyecto en cada jar. Los servicios solo declaran el plugin
+                  sin <executions>, heredan esta config y exponen la version automaticamente via
+                  BuildProperties (consumido por BaseInfoController).
+                  Para subir version: editar SOLO la version en este pom (parent), o usar
+                  `mvn versions:set -DnewVersion=X.Y.Z -DprocessAllModules`.
+                -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <executions>
+                        <execution>
+                            <id>build-info</id>
+                            <goals>
+                                <goal>build-info</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>

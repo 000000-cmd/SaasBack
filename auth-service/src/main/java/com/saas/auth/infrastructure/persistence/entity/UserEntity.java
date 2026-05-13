@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
@@ -25,6 +26,7 @@ import java.time.LocalDateTime;
 @Builder
 @Entity
 @Table(name = "app_user")
+@SQLRestriction("Visible = 1")
 public class UserEntity extends BaseEntity {
 
     @Column(name = "Username", nullable = false, length = 60)

@@ -14,6 +14,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 /**
  * Item dentro de una {@link SystemListEntity}.
@@ -29,6 +30,7 @@ import lombok.Setter;
         name = "system_list_item",
         uniqueConstraints = @UniqueConstraint(name = "uq_system_list_item_code", columnNames = {"ListId", "Code"})
 )
+@SQLRestriction("Visible = 1")
 public class SystemListItemEntity extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

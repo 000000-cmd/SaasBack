@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 @Getter
 @Setter
@@ -17,6 +18,7 @@ import lombok.Setter;
 @Builder
 @Entity
 @Table(name = "permission")
+@SQLRestriction("Visible = 1")
 public class PermissionEntity extends BaseEntity {
 
     @Column(name = "Code", nullable = false, length = 50)

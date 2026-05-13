@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.SQLRestriction;
 
 /**
  * Catalogo configurable (lista del sistema).
@@ -22,6 +23,7 @@ import lombok.Setter;
 @Builder
 @Entity
 @Table(name = "system_list")
+@SQLRestriction("Visible = 1")
 public class SystemListEntity extends BaseEntity {
 
     @Column(name = "Code", nullable = false, length = 80)
