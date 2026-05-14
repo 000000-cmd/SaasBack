@@ -12,9 +12,10 @@ import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 
 /**
- * Catalogo configurable (lista del sistema).
+ * Meta-registro de catalogos del sistema.
  * Ejemplos: TIPOS_DOCUMENTO, ESTADOS_REGISTRO, GENEROS.
- * Sus items viven en {@link SystemListItemEntity}.
+ * Los items de cada catalogo viven en su tabla propia
+ * (document_type, registration_status, gender, ...) y se acceden via /list.
  */
 @Getter
 @Setter

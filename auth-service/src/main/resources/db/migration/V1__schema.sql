@@ -167,9 +167,10 @@ CREATE TABLE system_list (
     UNIQUE KEY uq_system_list_code (Code)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE system_list_item (
+-- Tablas de catalogo: misma estructura, una por catalogo (semanticamente independientes).
+-- Se acceden via /list/{nombre_tabla} usando CatalogController + CatalogRegistry.
+CREATE TABLE document_type (
     Id           CHAR(36)     NOT NULL,
-    ListId       CHAR(36)     NOT NULL,
     Code         VARCHAR(80)  NOT NULL,
     Name         VARCHAR(120) NOT NULL,
     Value        VARCHAR(500) NULL,
@@ -180,10 +181,37 @@ CREATE TABLE system_list_item (
     AuditDate    DATETIME(6)  NOT NULL,
     CreatedDate  DATETIME(6)  NOT NULL,
     PRIMARY KEY (Id),
-    UNIQUE KEY uq_system_list_item_code (ListId, Code),
-    KEY idx_system_list_item_list (ListId),
-    CONSTRAINT fk_system_list_item_list
-        FOREIGN KEY (ListId) REFERENCES system_list (Id)
+    UNIQUE KEY uq_document_type_code (Code)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE registration_status (
+    Id           CHAR(36)     NOT NULL,
+    Code         VARCHAR(80)  NOT NULL,
+    Name         VARCHAR(120) NOT NULL,
+    Value        VARCHAR(500) NULL,
+    DisplayOrder INT          NOT NULL DEFAULT 0,
+    Enabled      BOOLEAN      NOT NULL DEFAULT TRUE,
+    Visible      BOOLEAN      NOT NULL DEFAULT TRUE,
+    AuditUser    CHAR(36)     NULL,
+    AuditDate    DATETIME(6)  NOT NULL,
+    CreatedDate  DATETIME(6)  NOT NULL,
+    PRIMARY KEY (Id),
+    UNIQUE KEY uq_registration_status_code (Code)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE gender (
+    Id           CHAR(36)     NOT NULL,
+    Code         VARCHAR(80)  NOT NULL,
+    Name         VARCHAR(120) NOT NULL,
+    Value        VARCHAR(500) NULL,
+    DisplayOrder INT          NOT NULL DEFAULT 0,
+    Enabled      BOOLEAN      NOT NULL DEFAULT TRUE,
+    Visible      BOOLEAN      NOT NULL DEFAULT TRUE,
+    AuditUser    CHAR(36)     NULL,
+    AuditDate    DATETIME(6)  NOT NULL,
+    CreatedDate  DATETIME(6)  NOT NULL,
+    PRIMARY KEY (Id),
+    UNIQUE KEY uq_gender_code (Code)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE constant (

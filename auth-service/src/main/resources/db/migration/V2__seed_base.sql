@@ -61,22 +61,26 @@ INSERT INTO system_list (Id, Code, Name, Description, Enabled, Visible, AuditUse
     ('44444444-0000-0000-0000-000000000002', 'ESTADOS_REGISTRO', 'Estados de Registro',         'Estados genericos para entidades del sistema', TRUE, TRUE, NULL, @now, @now),
     ('44444444-0000-0000-0000-000000000003', 'GENEROS',          'Generos',                     'Catalogo de generos',                          TRUE, TRUE, NULL, @now, @now);
 
-INSERT INTO system_list_item (Id, ListId, Code, Name, Value, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
-    -- TIPOS_DOCUMENTO
-    ('55555555-0000-0000-0000-000000000001', '44444444-0000-0000-0000-000000000001', 'CC', 'Cedula de Ciudadania',  'CC', 1, TRUE, TRUE, NULL, @now, @now),
-    ('55555555-0000-0000-0000-000000000002', '44444444-0000-0000-0000-000000000001', 'TI', 'Tarjeta de Identidad',  'TI', 2, TRUE, TRUE, NULL, @now, @now),
-    ('55555555-0000-0000-0000-000000000003', '44444444-0000-0000-0000-000000000001', 'CE', 'Cedula de Extranjeria', 'CE', 3, TRUE, TRUE, NULL, @now, @now),
-    ('55555555-0000-0000-0000-000000000004', '44444444-0000-0000-0000-000000000001', 'PA', 'Pasaporte',             'PA', 4, TRUE, TRUE, NULL, @now, @now),
-    ('55555555-0000-0000-0000-000000000005', '44444444-0000-0000-0000-000000000001', 'NIT', 'NIT',                  'NIT', 5, TRUE, TRUE, NULL, @now, @now),
-    -- ESTADOS_REGISTRO
-    ('55555555-0000-0000-0000-000000000010', '44444444-0000-0000-0000-000000000002', 'ACT', 'Activo',     'ACTIVE',    1, TRUE, TRUE, NULL, @now, @now),
-    ('55555555-0000-0000-0000-000000000011', '44444444-0000-0000-0000-000000000002', 'INA', 'Inactivo',   'INACTIVE',  2, TRUE, TRUE, NULL, @now, @now),
-    ('55555555-0000-0000-0000-000000000012', '44444444-0000-0000-0000-000000000002', 'PEN', 'Pendiente',  'PENDING',   3, TRUE, TRUE, NULL, @now, @now),
-    ('55555555-0000-0000-0000-000000000013', '44444444-0000-0000-0000-000000000002', 'BLO', 'Bloqueado',  'BLOCKED',   4, TRUE, TRUE, NULL, @now, @now),
-    -- GENEROS
-    ('55555555-0000-0000-0000-000000000020', '44444444-0000-0000-0000-000000000003', 'M', 'Masculino', 'M', 1, TRUE, TRUE, NULL, @now, @now),
-    ('55555555-0000-0000-0000-000000000021', '44444444-0000-0000-0000-000000000003', 'F', 'Femenino',  'F', 2, TRUE, TRUE, NULL, @now, @now),
-    ('55555555-0000-0000-0000-000000000022', '44444444-0000-0000-0000-000000000003', 'O', 'Otro',      'O', 3, TRUE, TRUE, NULL, @now, @now);
+-- ---------------------------------------------------------------------
+-- CATALOGOS (cada uno en su propia tabla, acceso via /list/{tabla})
+-- ---------------------------------------------------------------------
+INSERT INTO document_type (Id, Code, Name, Value, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
+    ('55555555-0000-0000-0000-000000000001', 'CC',  'Cedula de Ciudadania',  'CC',  1, TRUE, TRUE, NULL, @now, @now),
+    ('55555555-0000-0000-0000-000000000002', 'TI',  'Tarjeta de Identidad',  'TI',  2, TRUE, TRUE, NULL, @now, @now),
+    ('55555555-0000-0000-0000-000000000003', 'CE',  'Cedula de Extranjeria', 'CE',  3, TRUE, TRUE, NULL, @now, @now),
+    ('55555555-0000-0000-0000-000000000004', 'PA',  'Pasaporte',             'PA',  4, TRUE, TRUE, NULL, @now, @now),
+    ('55555555-0000-0000-0000-000000000005', 'NIT', 'NIT',                   'NIT', 5, TRUE, TRUE, NULL, @now, @now);
+
+INSERT INTO registration_status (Id, Code, Name, Value, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
+    ('55555555-0000-0000-0000-000000000010', 'ACT', 'Activo',    'ACTIVE',   1, TRUE, TRUE, NULL, @now, @now),
+    ('55555555-0000-0000-0000-000000000011', 'INA', 'Inactivo',  'INACTIVE', 2, TRUE, TRUE, NULL, @now, @now),
+    ('55555555-0000-0000-0000-000000000012', 'PEN', 'Pendiente', 'PENDING',  3, TRUE, TRUE, NULL, @now, @now),
+    ('55555555-0000-0000-0000-000000000013', 'BLO', 'Bloqueado', 'BLOCKED',  4, TRUE, TRUE, NULL, @now, @now);
+
+INSERT INTO gender (Id, Code, Name, Value, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
+    ('55555555-0000-0000-0000-000000000020', 'M', 'Masculino', 'M', 1, TRUE, TRUE, NULL, @now, @now),
+    ('55555555-0000-0000-0000-000000000021', 'F', 'Femenino',  'F', 2, TRUE, TRUE, NULL, @now, @now),
+    ('55555555-0000-0000-0000-000000000022', 'O', 'Otro',      'O', 3, TRUE, TRUE, NULL, @now, @now);
 
 -- ---------------------------------------------------------------------
 -- CONSTANTS (valores de configuracion globales, todos como STRING)
