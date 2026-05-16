@@ -20,5 +20,21 @@ public final class EventTypes {
     public static final String PERSON_DELETED = "person.deleted";
     public static final String PERSON_BUSINESS_ASSOCIATED = "person.business.associated";
 
+    public static final String LOCATION_COUNTRY_CREATED = "location.country.created";
+    public static final String LOCATION_COUNTRY_UPDATED = "location.country.updated";
+    public static final String LOCATION_COUNTRY_DELETED = "location.country.deleted";
+
+    public static final String LOCATION_DEPARTMENT_CREATED = "location.department.created";
+    public static final String LOCATION_DEPARTMENT_UPDATED = "location.department.updated";
+    public static final String LOCATION_DEPARTMENT_DELETED = "location.department.deleted";
+
+    public static final String LOCATION_MUNICIPALITY_CREATED = "location.municipality.created";
+    public static final String LOCATION_MUNICIPALITY_UPDATED = "location.municipality.updated";
+    public static final String LOCATION_MUNICIPALITY_DELETED = "location.municipality.deleted";
+
+    public static final String LOCATION_NEIGHBORHOOD_CREATED = "location.neighborhood.created";
+    public static final String LOCATION_NEIGHBORHOOD_UPDATED = "location.neighborhood.updated";
+    public static final String LOCATION_NEIGHBORHOOD_DELETED = "location.neighborhood.deleted";
+
     private EventTypes(){}
 }

@@ -109,6 +109,15 @@ public class CatalogController {
         return ResponseEntity.ok(ApiResponse.success(null, "Item deshabilitado"));
     }
 
+    @PatchMapping("/{catalogName}/{id}/enabled")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> toggleEnabled(@PathVariable String catalogName,
+                                                            @PathVariable UUID id,
+                                                            @RequestParam("value") boolean value) {
+        registry.get(catalogName).toggleEnabled(id, value);
+        return ResponseEntity.ok(ApiResponse.success(null, value ? "Item habilitado" : "Item inhabilitado"));
+    }
+
     // ---------- helpers ----------
 
     @SuppressWarnings("unchecked")

@@ -21,7 +21,7 @@ public class DocumentTypeService extends BaseCatalogService<DocumentType, UUID> 
 
     @Override
     public String getCatalogPath() {
-        return "document_types";
+        return "document_type";
     }
 
     @Override

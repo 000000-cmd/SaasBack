@@ -1,0 +1,66 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s",
+    "analysis": {
+      "analyzer": {
+        "spanish_text": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id":                   { "type": "keyword" },
+      "businessId":           { "type": "keyword" },
+      "createdAt":            { "type": "date" },
+      "updatedAt":            { "type": "date" },
+      "docVersion":           { "type": "long" },
+
+      "level":                { "type": "keyword" },
+
+      "countryId":            { "type": "keyword" },
+      "countryCode":          { "type": "keyword" },
+      "countryName": {
+        "type": "search_as_you_type",
+        "analyzer": "spanish_text",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+
+      "departmentId":         { "type": "keyword" },
+      "departmentCode":       { "type": "keyword" },
+      "departmentName": {
+        "type": "search_as_you_type",
+        "analyzer": "spanish_text",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+
+      "municipalityId":       { "type": "keyword" },
+      "municipalityCode":     { "type": "keyword" },
+      "municipalityName": {
+        "type": "search_as_you_type",
+        "analyzer": "spanish_text",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+
+      "neighborhoodId":       { "type": "keyword" },
+      "neighborhoodCode":     { "type": "keyword" },
+      "neighborhoodName": {
+        "type": "search_as_you_type",
+        "analyzer": "spanish_text",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+      "neighborhoodType":     { "type": "keyword" },
+
+      "searchText":           { "type": "text", "analyzer": "spanish_text" },
+      "fullPath":             { "type": "text", "analyzer": "spanish_text" },
+
+      "enabled":              { "type": "boolean" }
+    }
+  }
+}

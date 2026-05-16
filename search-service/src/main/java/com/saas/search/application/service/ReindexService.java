@@ -3,6 +3,7 @@ package com.saas.search.application.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.saas.search.domain.document.BaseDocument;
+import com.saas.search.domain.document.LocationDocument;
 import com.saas.search.domain.document.RoleDocument;
 import com.saas.search.domain.document.UserDocument;
 import com.saas.search.domain.constants.Entities;
@@ -52,13 +53,15 @@ public class ReindexService {
     private static final int PAGE_SIZE = 500;
     private static final Set<String> ALL_ENTITIES = Set.of(
             Entities.ROLE_ENTITY,
-            Entities.USER_ENTITY
+            Entities.USER_ENTITY,
+            Entities.LOCATION_ENTITY
     );
 
     /** Mapeo entidad -> nombre del service Eureka que la provee. */
     private static final java.util.Map<String, String> ENTITY_TO_SERVICE = java.util.Map.of(
             Entities.USER_ENTITY, "auth-service",
-            Entities.ROLE_ENTITY, "system-service"
+            Entities.ROLE_ENTITY, "system-service",
+            Entities.LOCATION_ENTITY, "system-service"
     );
 
     /** Tiempo maximo a esperar a que Eureka tenga las instancias registradas. */
@@ -121,6 +124,7 @@ public class ReindexService {
                             () -> systemClient.countRoles().getOrDefault("total", 0L),
                             systemClient::fetchRoles,
                             RoleDocument.class);
+                    case Entities.LOCATION_ENTITY -> reindexLocations();
                     default -> log.warn("Entidad desconocida en reindex: '{}' (ignorada)", entity);
                 }
             } catch (Exception ex) {
@@ -204,6 +208,43 @@ public class ReindexService {
                     entityLabel, indexed, failed);
         } else {
             log.info("Reindex {} TERMINADO: {} indexados, sin fallos", entityLabel, indexed);
+        }
+    }
+
+    /**
+     * Location es un solo indice ES (alias {@code locations}) pero 4 fuentes
+     * en MySQL: country, department, municipality, neighborhood. Hace 4
+     * sub-pasos contra system-service, todos volcando al mismo alias.
+     *
+     * <p>El system-service serializa los payloads denormalizados (con la
+     * cadena padre ya resuelta) en {@code LocationReindexPayload}, cuyos
+     * campos coinciden con {@code LocationDocument} — asi el pipeline
+     * generico hace el mapeo directo via Jackson.
+     */
+    private void reindexLocations() {
+        String alias = indexNames.locations();
+        safeReindex("locations:countries",      alias,
+                () -> systemClient.countCountries().getOrDefault("total", 0L),
+                systemClient::fetchCountries);
+        safeReindex("locations:departments",    alias,
+                () -> systemClient.countDepartments().getOrDefault("total", 0L),
+                systemClient::fetchDepartments);
+        safeReindex("locations:municipalities", alias,
+                () -> systemClient.countMunicipalities().getOrDefault("total", 0L),
+                systemClient::fetchMunicipalities);
+        safeReindex("locations:neighborhoods",  alias,
+                () -> systemClient.countNeighborhoods().getOrDefault("total", 0L),
+                systemClient::fetchNeighborhoods);
+    }
+
+    /** Wrap reindex() para que el fallo de un sub-pass no aborte los siguientes. */
+    private void safeReindex(String label, String alias,
+                              Supplier<Long> countFetcher,
+                              BiFunction<Integer, Integer, List<JsonNode>> batchFetcher) {
+        try {
+            reindex(label, alias, countFetcher, batchFetcher, LocationDocument.class);
+        } catch (Exception ex) {
+            log.error("Reindex de {} fallo: {}", label, ex.getMessage(), ex);
         }
     }
 

@@ -21,7 +21,7 @@ public class GenderService extends BaseCatalogService<Gender, UUID> {
 
     @Override
     public String getCatalogPath() {
-        return "genders";
+        return "gender";
     }
 
     @Override

@@ -21,7 +21,7 @@ public class RegistrationStatusService extends BaseCatalogService<RegistrationSt
 
     @Override
     public String getCatalogPath() {
-        return "registration_statuses";
+        return "registration_status";
     }
 
     @Override

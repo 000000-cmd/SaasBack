@@ -16,7 +16,7 @@ public class BranchTypeService extends BaseCatalogService<BranchType, UUID> {
 
     @Override
     public String getCatalogPath() {
-        return "branch_types";
+        return "branch_type";
     }
 
     @Override

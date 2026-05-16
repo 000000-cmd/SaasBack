@@ -72,3 +72,16 @@ CREATE TABLE schedule_status (
                               PRIMARY KEY (Id),
                               UNIQUE KEY uq_schedule_status_code (Code)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+-- ---------------------------------------------------------------------
+-- SEED: registro en system_list de los catalogos de negocio.
+-- Codes coinciden con el getCatalogPath() de cada *Service, asi el
+-- frontend usa el Code de system_list para llamar /list/{Code}.
+-- ---------------------------------------------------------------------
+SET @now_v6 = NOW(6);
+
+INSERT INTO system_list (Id, Code, Name, Description, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
+    ('44444444-0000-0000-0000-000000000004', 'business_type',        'Tipos de Negocio',        'Categorias de negocio (peluqueria, spa, barberia, etc.)', TRUE, TRUE, NULL, @now_v6, @now_v6),
+    ('44444444-0000-0000-0000-000000000005', 'branch_type',       'Tipos de Sucursal',       'Clasificacion de sucursales',                              TRUE, TRUE, NULL, @now_v6, @now_v6),
+    ('44444444-0000-0000-0000-000000000006', 'contact_type',       'Tipos de Contacto',       'Medios de contacto (telefono, email, whatsapp, etc.)',     TRUE, TRUE, NULL, @now_v6, @now_v6),
+    ('44444444-0000-0000-0000-000000000007', 'status',              'Estados',                 'Estados genericos para entidades de negocio',              TRUE, TRUE, NULL, @now_v6, @now_v6),
+    ('44444444-0000-0000-0000-000000000008', 'schedule_status', 'Estados de Agendamiento', 'Estados del ciclo de vida de una cita',                    TRUE, TRUE, NULL, @now_v6, @now_v6);

@@ -18,4 +18,6 @@ public class IndexNames {
 
     public String roles() { return "roles"; }
 
+    public String locations() { return "locations"; }
+
 }

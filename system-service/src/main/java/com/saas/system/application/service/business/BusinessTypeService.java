@@ -16,7 +16,7 @@ public class BusinessTypeService extends BaseCatalogService<BusinessType, UUID> 
 
     @Override
     public String getCatalogPath() {
-        return "business_types";
+        return "business_type";
     }
 
     @Override

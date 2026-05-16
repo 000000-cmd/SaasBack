@@ -57,9 +57,9 @@ INSERT INTO role_permission (Id, RoleId, PermissionId, Enabled, Visible, AuditUs
 -- SYSTEM LISTS (catalogos configurables)
 -- ---------------------------------------------------------------------
 INSERT INTO system_list (Id, Code, Name, Description, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
-    ('44444444-0000-0000-0000-000000000001', 'TIPOS_DOCUMENTO',  'Tipos de Documento',          'Catalogo de tipos de documento de identidad', TRUE, TRUE, NULL, @now, @now),
-    ('44444444-0000-0000-0000-000000000002', 'ESTADOS_REGISTRO', 'Estados de Registro',         'Estados genericos para entidades del sistema', TRUE, TRUE, NULL, @now, @now),
-    ('44444444-0000-0000-0000-000000000003', 'GENEROS',          'Generos',                     'Catalogo de generos',                          TRUE, TRUE, NULL, @now, @now);
+    ('44444444-0000-0000-0000-000000000001', 'document_type',  'Tipos de Documento',          'Catalogo de tipos de documento de identidad', TRUE, TRUE, NULL, @now, @now),
+    ('44444444-0000-0000-0000-000000000002', 'registration_status', 'Estados de Registro',         'Estados genericos para entidades del sistema', TRUE, TRUE, NULL, @now, @now),
+    ('44444444-0000-0000-0000-000000000003', 'gender',          'Generos',                     'Catalogo de generos',                          TRUE, TRUE, NULL, @now, @now);
 
 -- ---------------------------------------------------------------------
 -- CATALOGOS (cada uno en su propia tabla, acceso via /list/{tabla})
