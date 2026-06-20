@@ -1,14 +1,20 @@
 package com.saas.common.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.saas.common.audit.AuditAction;
+import com.saas.common.audit.AuditEmitter;
 import com.saas.common.exception.ResourceNotFoundException;
 import com.saas.common.model.BaseDomain;
+import com.saas.common.model.ITenantOwned;
 import com.saas.common.port.in.IGenericUseCase;
 import com.saas.common.port.out.IGenericRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Implementacion base para servicios CRUD basados en Id.
@@ -30,6 +36,14 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
         implements IGenericUseCase<T, ID> {
 
     protected final IGenericRepositoryPort<T, ID> repository;
+
+    /**
+     * Auditoria central: inyectada por campo (no por constructor) para no
+     * obligar a las subclases a cambiar su constructor. Opcional: si el
+     * servicio no tiene outbox, queda null y no se audita.
+     */
+    @Autowired(required = false)
+    protected AuditEmitter auditEmitter;
 
     /** Nombre legible del recurso para mensajes de error (ej. "Rol", "Menu"). */
     protected abstract String getResourceName();
@@ -66,6 +80,7 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
         T saved = repository.save(entity);
         log.info("{} creado: id={}", getResourceName(), saved.getId());
         onAfterCreate(saved);
+        audit(AuditAction.CREATE, null, saved);
         return saved;
     }
 
@@ -75,11 +90,14 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
         log.debug("Actualizando {} id={}", getResourceName(), id);
         T existing = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(getResourceName(), "Id", id));
+        // Congelar el "before" ANTES de mutar existing en applyChanges.
+        JsonNode before = auditEmitter != null ? auditEmitter.snapshot(existing) : null;
         onBeforeUpdate(existing, incoming);
         applyChanges(existing, incoming);
         T updated = repository.update(existing);
         log.info("{} actualizado: id={}", getResourceName(), id);
         onAfterUpdate(existing, updated);
+        audit(AuditAction.UPDATE, before, updated);
         return updated;
     }
 
@@ -102,16 +120,21 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
         repository.softDeleteById(id);
         log.info("{} eliminado (soft) id={}", getResourceName(), id);
         onAfterDelete(id, snapshot);
+        // Pasamos el dominio (no un JsonNode) para poder derivar aggregateType/id;
+        // softDeleteById opera por id en BD y no muta el snapshot en memoria.
+        audit(AuditAction.DELETE, snapshot, null);
     }
 
     @Override
     @Transactional
     public void toggleEnabled(ID id, boolean enabled) {
         T entity = getById(id);
+        JsonNode before = auditEmitter != null ? auditEmitter.snapshot(entity) : null;
         entity.setEnabled(enabled);
         T updated = repository.update(entity);
         log.info("{} id={} -> Enabled={}", getResourceName(), id, enabled);
         onAfterUpdate(entity, updated);
+        audit(AuditAction.TOGGLE, before, updated);
     }
 
     @Override
@@ -124,6 +147,25 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
     @Transactional(readOnly = true)
     public long count() {
         return repository.count();
+    }
+
+    /**
+     * Emite el evento de auditoria. {@code before} puede ser un BaseDomain o un
+     * snapshot {@link JsonNode} ya congelado; {@code after} el estado posterior.
+     * El aggregateType se deriva del nombre simple del dominio (Role -> "role").
+     */
+    private void audit(AuditAction action, Object before, T after) {
+        if (auditEmitter == null) return;
+        T reference = after != null ? after : asDomain(before);
+        if (reference == null) return;
+        String aggregateType = reference.getClass().getSimpleName().toLowerCase();
+        UUID businessId = (reference instanceof ITenantOwned t) ? t.getBusinessId() : null;
+        auditEmitter.emit(action, aggregateType, reference.getId(), businessId, before, after);
+    }
+
+    @SuppressWarnings("unchecked")
+    private T asDomain(Object o) {
+        return (o instanceof BaseDomain) ? (T) o : null;
     }
 
 }

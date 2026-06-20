@@ -1,4 +1,7 @@
+C:\SaasBack\saas-common\src\main\java\com\saas\common\audit\AuditAction.java
+C:\SaasBack\saas-common\src\main\java\com\saas\common\audit\AuditEmitter.java
 C:\SaasBack\saas-common\src\main\java\com\saas\common\audit\AuditorAwareImpl.java
+C:\SaasBack\saas-common\src\main\java\com\saas\common\audit\AuditPayload.java
 C:\SaasBack\saas-common\src\main\java\com\saas\common\audit\JpaAuditingConfig.java
 C:\SaasBack\saas-common\src\main\java\com\saas\common\controller\BaseInfoController.java
 C:\SaasBack\saas-common\src\main\java\com\saas\common\dto\ApiResponse.java
@@ -21,6 +24,7 @@ C:\SaasBack\saas-common\src\main\java\com\saas\common\model\BaseCatalogDomain.ja
 C:\SaasBack\saas-common\src\main\java\com\saas\common\model\BaseDomain.java
 C:\SaasBack\saas-common\src\main\java\com\saas\common\model\ICodeable.java
 C:\SaasBack\saas-common\src\main\java\com\saas\common\model\IIdentifiable.java
+C:\SaasBack\saas-common\src\main\java\com\saas\common\model\ITenantOwned.java
 C:\SaasBack\saas-common\src\main\java\com\saas\common\outbox\OutboxEvent.java
 C:\SaasBack\saas-common\src\main\java\com\saas\common\outbox\OutboxEventRepository.java
 C:\SaasBack\saas-common\src\main\java\com\saas\common\outbox\OutboxEventStatus.java

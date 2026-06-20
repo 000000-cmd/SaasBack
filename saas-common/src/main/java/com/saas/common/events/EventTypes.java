@@ -36,5 +36,14 @@ public final class EventTypes {
     public static final String LOCATION_NEIGHBORHOOD_UPDATED = "location.neighborhood.updated";
     public static final String LOCATION_NEIGHBORHOOD_DELETED = "location.neighborhood.deleted";
 
+    /**
+     * Evento dedicado de auditoria. Lo emite {@link com.saas.common.audit.AuditEmitter}
+     * desde los servicios base CRUD. El relay enruta todo lo que empiece por
+     * "audit." al topic dedicado {@code audit.events} (ver OutboxRelay).
+     */
+    public static final String AUDIT_RECORDED = "audit.recorded";
+    /** Prefijo usado por el relay para enrutar al topic de auditoria. */
+    public static final String AUDIT_PREFIX = "audit.";
+
     private EventTypes(){}
 }

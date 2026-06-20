@@ -28,6 +28,8 @@
         <module>auth-service</module>
         <module>system-service</module>
         <module>search-service</module>
+        <module>business-service</module>
+        <module>audit-service</module>
     </modules>
 
     <properties>

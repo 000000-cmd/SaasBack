@@ -31,6 +31,12 @@ public class RouteConfig {
     @Value("${saas.gateway.services.search-uri:lb://search-service}")
     private String searchUri;
 
+    @Value("${saas.gateway.services.business-uri:lb://business-service}")
+    private String businessUri;
+
+    @Value("${saas.gateway.services.audit-uri:lb://audit-service}")
+    private String auditUri;
+
     @Bean("loginRateLimiter")
     public RedisRateLimiter loginRateLimiter(
             @Value("${saas.gateway.rate-limit.login.replenish-rate:2}") int replenish,
@@ -84,6 +90,18 @@ public class RouteConfig {
                                 .setRateLimiter(defaultRateLimiter)
                                 .setKeyResolver(userKeyResolver)))
                         .uri(searchUri))
+                .route("business", r -> r
+                        .path("/business/**")
+                        .filters(f -> f.requestRateLimiter(c -> c
+                                .setRateLimiter(defaultRateLimiter)
+                                .setKeyResolver(userKeyResolver)))
+                        .uri(businessUri))
+                .route("audit", r -> r
+                        .path("/audit/**")
+                        .filters(f -> f.requestRateLimiter(c -> c
+                                .setRateLimiter(defaultRateLimiter)
+                                .setKeyResolver(userKeyResolver)))
+                        .uri(auditUri))
                 .build();
     }
 }

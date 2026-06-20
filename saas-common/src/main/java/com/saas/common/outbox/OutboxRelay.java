@@ -37,6 +37,10 @@ public class OutboxRelay {
     @Value("${saas.outbox.topic:domain.events}")
     private String topic;
 
+    /** Topic dedicado para eventos de auditoria (eventType que empieza por "audit."). */
+    @Value("${saas.outbox.audit-topic:audit.events}")
+    private String auditTopic;
+
     @Value("${saas.outbox.batch-size:100}")
     private int batchSize;
 
@@ -85,8 +89,13 @@ public class OutboxRelay {
 
         String json =  mapper.writeValueAsString(envelope);
 
+        // Enrutado: los eventos de auditoria van a su topic dedicado.
+        String targetTopic = event.getEventType() != null
+                && event.getEventType().startsWith(com.saas.common.events.EventTypes.AUDIT_PREFIX)
+                ? auditTopic : topic;
+
         SendResult<String, String> result =
-                kafka.send(topic, key, json).get(5, TimeUnit.SECONDS);
+                kafka.send(targetTopic, key, json).get(5, TimeUnit.SECONDS);
 
         log.debug("Outbox event publicado: type={} key={} partition={} offset={}",
                 event.getEventType(),

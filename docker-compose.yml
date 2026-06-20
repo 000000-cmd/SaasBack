@@ -200,6 +200,12 @@ services:
           --topic domain.events.dlq \
           --partitions 3 \
           --replication-factor "$$KAFKA_TOPIC_RF"
+        kafka-topics --bootstrap-server kafka-1:9092 --create --if-not-exists \
+          --topic audit.events \
+          --partitions 12 \
+          --replication-factor "$$KAFKA_TOPIC_RF" \
+          --config min.insync.replicas="$$KAFKA_TOPIC_MIN_ISR" \
+          --config retention.ms=2592000000
         kafka-topics --bootstrap-server kafka-1:9092 --list
       '
     restart: "no"
@@ -511,6 +517,58 @@ services:
         condition: service_healthy
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8085/search/actuator/health" ]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # ===========================================
+  # CAPA 3: AUDIT SERVICE (consumidor de audit.events)
+  # ===========================================
+  audit-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: audit-service
+    image: saas-audit:latest
+    container_name: saas-audit
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      JAVA_OPTS: >-
+        -Xms256m
+        -Xmx512m
+        -XX:+UseG1GC
+        -XX:+UseContainerSupport
+        -XX:MaxGCPauseMillis=100
+        -Djava.security.egd=file:/dev/./urandom
+    ports:
+      - "8087:8087"
+    networks:
+      - saas-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      kafka-1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8087/audit/actuator/health"]
       interval: 15s
       timeout: 10s
       retries: 15
