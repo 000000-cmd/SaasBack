@@ -30,6 +30,7 @@
         <module>search-service</module>
         <module>business-service</module>
         <module>audit-service</module>
+        <module>thirdparty-service</module>
     </modules>
 
     <properties>

@@ -36,6 +36,10 @@ public final class EventTypes {
     public static final String LOCATION_NEIGHBORHOOD_UPDATED = "location.neighborhood.updated";
     public static final String LOCATION_NEIGHBORHOOD_DELETED = "location.neighborhood.deleted";
 
+    public static final String TENANT_CREATED = "tenant.created";
+    public static final String TENANT_UPDATED = "tenant.updated";
+    public static final String TENANT_DELETED = "tenant.deleted";
+
     /**
      * Evento dedicado de auditoria. Lo emite {@link com.saas.common.audit.AuditEmitter}
      * desde los servicios base CRUD. El relay enruta todo lo que empiece por
