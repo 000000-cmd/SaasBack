@@ -36,8 +36,9 @@ public class RouteConfig {
 
     @Value("${saas.gateway.services.audit-uri:lb://audit-service}")
     private String auditUri;
-    @Value("${saas.gateway.services.tenant-uri:lb://tenant-service}")
-    private String tenantUri;
+
+    @Value("${saas.gateway.services.thirdparty-uri:lb://thirdparty-service}")
+    private String thirdpartyUri;
 
     @Bean("loginRateLimiter")
     public RedisRateLimiter loginRateLimiter(
@@ -104,12 +105,12 @@ public class RouteConfig {
                                 .setRateLimiter(defaultRateLimiter)
                                 .setKeyResolver(userKeyResolver)))
                         .uri(auditUri))
-                .route("tenant", r -> r
-                        .path("/tenant/**")
+                .route("thirdparty", r -> r
+                        .path("/thirdparty/**")
                         .filters(f -> f.requestRateLimiter(c -> c
                                 .setRateLimiter(defaultRateLimiter)
                                 .setKeyResolver(userKeyResolver)))
-                        .uri(tenantUri))
+                        .uri(thirdpartyUri))
                 .build();
     }
 }

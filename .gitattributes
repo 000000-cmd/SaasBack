@@ -1,0 +1,20 @@
+# Normaliza fin de linea: evita el ruido CRLF/LF entre Windows y Linux/CI.
+* text=auto eol=lf
+
+# Scripts que deben conservar su fin de linea nativo
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+*.sh    text eol=lf
+*.cmd   text eol=crlf
+
+# Binarios (no tocar)
+*.jar   binary
+*.class binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.keystore binary
+*.p12   binary

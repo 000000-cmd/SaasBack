@@ -94,6 +94,16 @@ public class AuditEmitter {
         }
     }
 
+    /**
+     * Regla anti-saturacion: si el usuario que modifica es el MISMO que creo el
+     * registro, no se audita (evita auditorias "falsas" del propio autor).
+     */
+    public boolean isSelfModification(UUID createdBy) {
+        if (createdBy == null) return false;
+        IUserPrincipal actor = currentActor();
+        return actor != null && createdBy.equals(actor.getUserId());
+    }
+
     private IUserPrincipal currentActor() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) return null;

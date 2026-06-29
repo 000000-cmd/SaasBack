@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.saas.search.domain.document.BaseDocument;
 import com.saas.search.domain.document.LocationDocument;
 import com.saas.search.domain.document.RoleDocument;
+import com.saas.search.domain.document.ThirdPartyDocument;
 import com.saas.search.domain.document.UserDocument;
 import com.saas.search.domain.constants.Entities;
 import com.saas.search.infrastructure.client.AuthInternalClient;
 import com.saas.search.infrastructure.client.SystemInternalClient;
+import com.saas.search.infrastructure.client.ThirdpartyInternalClient;
 import com.saas.search.infrastructure.elasticsearch.IndexNames;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,14 +56,16 @@ public class ReindexService {
     private static final Set<String> ALL_ENTITIES = Set.of(
             Entities.ROLE_ENTITY,
             Entities.USER_ENTITY,
-            Entities.LOCATION_ENTITY
+            Entities.LOCATION_ENTITY,
+            Entities.THIRDPARTY_ENTITY
     );
 
     /** Mapeo entidad -> nombre del service Eureka que la provee. */
     private static final java.util.Map<String, String> ENTITY_TO_SERVICE = java.util.Map.of(
             Entities.USER_ENTITY, "auth-service",
             Entities.ROLE_ENTITY, "system-service",
-            Entities.LOCATION_ENTITY, "system-service"
+            Entities.LOCATION_ENTITY, "system-service",
+            Entities.THIRDPARTY_ENTITY, "thirdparty-service"
     );
 
     /** Tiempo maximo a esperar a que Eureka tenga las instancias registradas. */
@@ -70,6 +74,7 @@ public class ReindexService {
 
     private final AuthInternalClient authClient;
     private final SystemInternalClient systemClient;
+    private final ThirdpartyInternalClient thirdpartyClient;
     private final ElasticsearchOperations ops;
     private final ObjectMapper mapper;
     private final IndexNames indexNames;
@@ -125,6 +130,12 @@ public class ReindexService {
                             systemClient::fetchRoles,
                             RoleDocument.class);
                     case Entities.LOCATION_ENTITY -> reindexLocations();
+                    case Entities.THIRDPARTY_ENTITY -> reindex(
+                            Entities.THIRDPARTY_ENTITY,
+                            indexNames.thirdParties(),
+                            () -> thirdpartyClient.countThirdParties().getOrDefault("total", 0L),
+                            thirdpartyClient::fetchThirdParties,
+                            ThirdPartyDocument.class);
                     default -> log.warn("Entidad desconocida en reindex: '{}' (ignorada)", entity);
                 }
             } catch (Exception ex) {

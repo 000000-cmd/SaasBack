@@ -1,0 +1,37 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s",
+    "analysis": {
+      "analyzer": {
+        "spanish_text": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id":             { "type": "keyword" },
+      "businessId":     { "type": "keyword" },
+      "createdAt":      { "type": "date" },
+      "updatedAt":      { "type": "date" },
+      "docVersion":     { "type": "long" },
+      "documentTypeId": { "type": "keyword" },
+      "documentNumber": { "type": "keyword" },
+      "fullName":       {
+        "type": "text",
+        "analyzer": "spanish_text",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+      "firstName":      { "type": "text", "analyzer": "spanish_text" },
+      "firstLastName":  { "type": "text", "analyzer": "spanish_text" },
+      "genderId":       { "type": "keyword" },
+      "enabled":        { "type": "boolean" }
+    }
+  }
+}

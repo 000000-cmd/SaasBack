@@ -28,7 +28,9 @@ public abstract class BaseDomain implements IIdentifiable<UUID> {
     private Boolean enabled = Boolean.TRUE;
     private Boolean visible = Boolean.TRUE;
     private UUID auditUser;
+    private UUID businessId;
     private LocalDateTime auditDate;
+    private UUID createdBy;
     private LocalDateTime createdDate;
 
     /**

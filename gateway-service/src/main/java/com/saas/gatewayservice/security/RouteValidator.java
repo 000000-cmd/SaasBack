@@ -16,6 +16,8 @@ public class RouteValidator {
     private static final List<String> OPEN_PREFIXES = List.of(
             "/auth/login",
             "/auth/refresh",
+            "/auth/register-owner",
+            "/business/public",
             "/actuator",
             "/api/info",
             "/api/version"

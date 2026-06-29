@@ -20,4 +20,6 @@ public class IndexNames {
 
     public String locations() { return "locations"; }
 
+    public String thirdParties() { return "third_parties"; }
+
 }

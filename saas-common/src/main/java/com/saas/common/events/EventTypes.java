@@ -36,9 +36,9 @@ public final class EventTypes {
     public static final String LOCATION_NEIGHBORHOOD_UPDATED = "location.neighborhood.updated";
     public static final String LOCATION_NEIGHBORHOOD_DELETED = "location.neighborhood.deleted";
 
-    public static final String TENANT_CREATED = "tenant.created";
-    public static final String TENANT_UPDATED = "tenant.updated";
-    public static final String TENANT_DELETED = "tenant.deleted";
+    public static final String THIRDPARTY_CREATED = "thirdparty.created";
+    public static final String THIRDPARTY_UPDATED = "thirdparty.updated";
+    public static final String THIRDPARTY_DELETED = "thirdparty.deleted";
 
     /**
      * Evento dedicado de auditoria. Lo emite {@link com.saas.common.audit.AuditEmitter}

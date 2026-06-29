@@ -13,4 +13,6 @@ public interface IRolePermissionUseCase {
     Set<String> getPermissionCodesByRoleId(UUID roleId);
 
     void replacePermissionsForRole(UUID roleId, Set<UUID> permissionIds);
+
+    Set<String> getPermissionCodesByRoleCodes(Set<String> roleCodes);
 }

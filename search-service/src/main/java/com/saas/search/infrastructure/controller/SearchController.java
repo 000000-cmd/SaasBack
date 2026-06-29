@@ -4,12 +4,15 @@ import com.saas.common.dto.ApiResponse;
 import com.saas.search.application.dto.search.SearchCriteria;
 import com.saas.search.application.dto.search.SearchResponse;
 import com.saas.search.application.service.search.RoleSearchService;
+import com.saas.search.application.service.search.ThirdPartySearchService;
 import com.saas.search.application.service.search.UserSearchService;
 import com.saas.search.domain.document.RoleDocument;
+import com.saas.search.domain.document.ThirdPartyDocument;
 import com.saas.search.domain.document.UserDocument;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -43,6 +46,7 @@ public class SearchController {
 
     private final UserSearchService userSearch;
     private final RoleSearchService roleSearch;
+    private final ThirdPartySearchService thirdPartySearch;
 
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<SearchResponse<UserDocument>>> searchUsers(
@@ -94,6 +98,36 @@ public class SearchController {
                 criteria, page, size, sortParts[0], sortParts[1]);
 
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/third-parties")
+    public ResponseEntity<ApiResponse<SearchResponse<ThirdPartyDocument>>> searchThirdParties(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Boolean enabled,
+            @RequestParam(required = false) UUID businessId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String sort) {
+
+        Map<String, Object> filters = new HashMap<>();
+        if (enabled != null) filters.put("enabled", enabled);
+
+        SearchCriteria criteria = SearchCriteria.builder()
+                .query(q)
+                .filters(filters)
+                .businessId(businessId)
+                .build();
+
+        String[] sortParts = parseSort(sort);
+        SearchResponse<ThirdPartyDocument> result = thirdPartySearch.search(
+                criteria, page, size, sortParts[0], sortParts[1]);
+
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/third-parties/{id}")
+    public ResponseEntity<ApiResponse<ThirdPartyDocument>> thirdPartyById(@PathVariable String id) {
+        return ResponseEntity.ok(ApiResponse.success(thirdPartySearch.findById(id)));
     }
 
     /**

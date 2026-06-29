@@ -35,7 +35,8 @@ public class EventEnvelope {
     private int version = 1;
 
     /**
-     * Multi-tenancy. Nullable hasta que tengas la entidad Business.
+     * Multi-tenancy. Lo sellan automaticamente los dominios que implementan ITenantOwned
+     * (business, branch, business_owner, servicios y horarios de empresa). Null = evento de sistema.
      */
     private UUID businessId;
 

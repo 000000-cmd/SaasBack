@@ -29,4 +29,12 @@ public interface JpaRolePermissionRepository extends JpaRepository<RolePermissio
             WHERE rp.role.id = :roleId AND rp.permission.id = :permissionId
             """)
     boolean existsByRoleIdAndPermissionId(@Param("roleId") UUID roleId, @Param("permissionId") UUID permissionId);
+
+    @Query("""
+            SELECT DISTINCT rp.permission.code FROM RolePermissionEntity rp
+            WHERE rp.role.code IN :roleCodes
+              AND rp.enabled = true
+              AND rp.permission.enabled = true
+            """)
+    Set<String> findPermissionCodesByRoleCodes(@Param("roleCodes") Set<String> roleCodes);
 }

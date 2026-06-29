@@ -11,9 +11,8 @@ import java.util.UUID;
  * Registro inmutable de auditoria. Una fila por cambio de dominio recibido
  * via {@code audit.events}.
  *
- * Vive en la tabla {@code audit_log} dentro del {@code saas_db} compartido.
- * El esquema lo crea Hibernate (ddl-auto=update) por ser una tabla nueva y
- * aislada (solo la escribe este servicio).
+ * Vive en la tabla {@code audit_log} del esquema dedicado {@code saas_audit},
+ * gobernado por Flyway en audit-service.
  */
 @Entity
 @Table(name = "audit_log", indexes = {

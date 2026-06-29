@@ -1,5 +1,6 @@
 package com.saas.gatewayservice.security;
 
+import com.saas.gatewayservice.model.HttpHeaders;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,7 +8,6 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -57,6 +57,11 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         Claims claims = jwt.parse(token).orElse(null);
         if (claims == null) {
             return reject(exchange, "Token invalido o expirado", HttpStatus.UNAUTHORIZED);
+        }
+
+        String businessId = request.getHeaders().getFirst(HttpHeaders.BUSINESSID);
+        if(businessId != null){
+            log.info("Procesando registro para la empresa "+ businessId);
         }
 
         return redis.hasKey(BLACKLIST_KEY_PREFIX + token)

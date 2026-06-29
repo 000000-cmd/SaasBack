@@ -1,6 +1,7 @@
 package com.saas.auth.application.service;
 
 import com.saas.auth.application.dto.request.LoginRequest;
+import com.saas.auth.application.dto.request.RegisterOwnerRequest;
 import com.saas.auth.application.dto.response.LoginResponse;
 import com.saas.auth.application.dto.response.TokenPairResponse;
 import com.saas.auth.application.dto.response.UserResponse;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -41,6 +43,13 @@ public class AuthService implements IAuthUseCase {
     private final JwtTokenProvider jwt;
     private final JwtBlacklistService blacklist;
     private final UserMapper userMapper;
+
+    /**
+     * Id fijo y conocido del rol {@code OWNER} (sembrado en la migración V1).
+     * Se referencia directamente para evitar una resolución code→id por Feign
+     * a system-service en el alta de un dueño.
+     */
+    private static final UUID OWNER_ROLE_ID = UUID.fromString("11111111-0000-0000-0000-000000000004");
 
     @Override
     @Transactional
@@ -68,6 +77,28 @@ public class AuthService implements IAuthUseCase {
         UserResponse userResponse = toUserResponseWithRoles(withRoles);
         log.info("Login exitoso: userId={} username={}", withRoles.getId(), withRoles.getUsername());
         return new LoginResponse(tokens, userResponse);
+    }
+
+    @Override
+    @Transactional
+    public LoginResponse registerOwner(RegisterOwnerRequest request) {
+        // 1) Crear la cuenta del dueño (reusa el flujo de creación con password).
+        User user = User.builder()
+                .username(request.username())
+                .email(request.email())
+                .firstName(request.firstName())
+                .lastName(request.lastName())
+                .build();
+        User created = userUseCase.createWithPassword(user, request.password());
+
+        // 2) Asignar el rol OWNER (id fijo sembrado).
+        userUseCase.assignRoles(created.getId(), Set.of(OWNER_ROLE_ID));
+
+        log.info("Registro de dueño: userId={} username={} negocio='{}' slug='{}'",
+                created.getId(), created.getUsername(), request.businessName(), request.slug());
+
+        // 3) Devolver la sesión iniciada (mismos tokens que el login).
+        return login(new LoginRequest(request.email(), request.password()));
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.saas.common.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.saas.common.audit.AuditAction;
+import com.saas.common.context.BusinessContext;
 import com.saas.common.audit.AuditEmitter;
 import com.saas.common.exception.ResourceNotFoundException;
 import com.saas.common.model.BaseDomain;
@@ -72,6 +73,15 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
     /** Hook opcional post-delete (soft). Tipico: emitir evento al outbox. */
     protected void onAfterDelete(ID id, T deletedSnapshot) { }
 
+    /**
+     * Si es {@code true}, SIEMPRE se audita (incluso cuando quien modifica es el
+     * mismo que creó el registro). Pensado para entidades de administración
+     * (roles, listas del sistema, catálogos): el admin hace pocos cambios, así
+     * que cada uno debe quedar registrado. Por defecto {@code false} (regla
+     * anti-saturación para entidades de uso frecuente).
+     */
+    protected boolean alwaysAudit() { return false; }
+
     @Override
     @Transactional
     public T create(T entity) {
@@ -80,7 +90,7 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
         T saved = repository.save(entity);
         log.info("{} creado: id={}", getResourceName(), saved.getId());
         onAfterCreate(saved);
-        audit(AuditAction.CREATE, null, saved);
+        // No se audita la creacion: ya queda registrada en CreatedBy/CreatedDate de la fila.
         return saved;
     }
 
@@ -154,12 +164,28 @@ public abstract class GenericCrudService<T extends BaseDomain, ID>
      * snapshot {@link JsonNode} ya congelado; {@code after} el estado posterior.
      * El aggregateType se deriva del nombre simple del dominio (Role -> "role").
      */
+    /**
+     * Resuelve el businessId para auditoria/eventos. Por defecto lo toma de
+     * {@link ITenantOwned}; los servicios cuyo dominio NO tiene businessId
+     * directo sobrescriben este metodo para resolverlo por lookup al padre.
+     */
+    protected UUID resolveBusinessId(T entity) {
+        if (entity instanceof ITenantOwned t && t.getBusinessId() != null) {
+            return t.getBusinessId();
+        }
+        // Sin businessId en el dominio: usar el del request (header X-Business-Id), si vino.
+        return BusinessContext.get();
+    }
+
     private void audit(AuditAction action, Object before, T after) {
         if (auditEmitter == null) return;
         T reference = after != null ? after : asDomain(before);
         if (reference == null) return;
+        // Regla anti-saturacion: si quien modifica es el mismo que creo el
+        // registro, no se audita... SALVO entidades admin (alwaysAudit()).
+        if (!alwaysAudit() && auditEmitter.isSelfModification(reference.getCreatedBy())) return;
         String aggregateType = reference.getClass().getSimpleName().toLowerCase();
-        UUID businessId = (reference instanceof ITenantOwned t) ? t.getBusinessId() : null;
+        UUID businessId = resolveBusinessId(reference);
         auditEmitter.emit(action, aggregateType, reference.getId(), businessId, before, after);
     }
 

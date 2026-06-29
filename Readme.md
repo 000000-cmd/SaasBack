@@ -2,7 +2,7 @@
 
 > Plataforma de microservicios multi-negocio (gestor multi-business). Spring Boot 3.5.9, Java 21, Spring Cloud 2025.0.1.
 >
-> **Stack**: MySQL 8.4 · Redis 7.4 · Kafka 7.8 (cluster KRaft) · Elasticsearch 8.17 · Eureka · Spring Cloud Config · Spring Cloud Gateway.
+> **Stack**: MySQL 8.4 · Redis 7.4 · Kafka 7.8 (KRaft, 1 broker dev) · Elasticsearch 8.17 (1 nodo dev) · Eureka · Spring Cloud Config · Spring Cloud Gateway.
 
 ---
 
@@ -21,6 +21,8 @@
 11. [Errores estándar](#11-errores-estándar)
 12. [Endpoints — Auth](#12-endpoints--auth)
 13. [Endpoints — System](#13-endpoints--system)
+13.1. [Endpoints — Thirdparty](#131-endpoints--thirdparty)
+13.2. [Endpoints — Business](#132-endpoints--business)
 14. [Endpoints — Search (Elasticsearch)](#14-endpoints--search-elasticsearch)
 15. [Endpoints internos S2S](#15-endpoints-internos-s2s)
 16. [Reindex masivo](#16-reindex-masivo)
@@ -48,7 +50,7 @@ Plataforma SaaS de gestión multi-negocio (fashion, peluquería, etc.) construid
 - **Multi-tenancy** desde el inicio (campo `businessId` en eventos y documentos).
 - **CQRS asíncrono**: MySQL es la fuente de verdad (writes), Elasticsearch es el read-model optimizado (búsquedas + agregaciones).
 - **Outbox Pattern + Kafka** para garantizar consistencia eventual entre BD y read-model sin "dual-write problem".
-- **Cluster productivo**: Kafka 3 brokers + ES 1 nodo (dev) / 3 nodos (prod).
+- **Mensajería + búsqueda**: Kafka 1 broker + ES 1 nodo (dev); escalable a cluster en prod.
 
 ---
 
@@ -81,7 +83,7 @@ Plataforma SaaS de gestión multi-negocio (fashion, peluquería, etc.) construid
                             ▼                              │
                    ┌──────────────────────────────────────┐│
                    │   KAFKA CLUSTER (KRaft)              ││
-                   │   3 brokers (9094, 9095, 9096)       │┤
+                   │   1 broker (9094) — dev             │┤
                    │   topic: domain.events               ││
                    └──────────────────────────────────────┘│
                                                            │
@@ -105,8 +107,8 @@ Plataforma SaaS de gestión multi-negocio (fashion, peluquería, etc.) construid
 
 - **Auth y System** usan MySQL para CRUD transaccional. **Search** usa ES para queries pesadas.
 - **Kafka desacopla** los productores (auth, system) de los consumidores (search, futuros: notifications, audit). Si Kafka cae, los eventos se acumulan en `outbox_event`; cuando vuelve, el `OutboxRelay` los publica.
-- **El cluster Kafka de 3 brokers** garantiza tolerancia a fallos en producción (replication factor 3).
-- **El cluster ES** se reduce a 1 nodo en dev (RAM limitada) y 3 en producción.
+- **Kafka** corre con 1 broker en dev (RF=1). En producción se escala a 3 brokers (RF=3) para tolerancia a fallos.
+- **Elasticsearch** corre con 1 nodo en dev (RAM limitada) y 3 en producción.
 
 ---
 
@@ -118,11 +120,14 @@ Plataforma SaaS de gestión multi-negocio (fashion, peluquería, etc.) construid
 | **auth-service** | 8082 | Login, refresh, logout, usuarios. **Líder de Flyway** | Spring Boot + JPA + Outbox |
 | **system-service** | 8083 | Roles, permisos, menús, listas, constantes | Spring Boot + JPA + Outbox |
 | **search-service** | 8085 | Read-model en ES. Consumer Kafka + endpoints `/search/*` | Spring Boot + Spring Data ES + Kafka |
+| **business-service** | 8086 | Empresas, sedes, empleados, propietarios, clientes, horarios/turnos, servicios, compensación | Spring Boot + JPA + Outbox |
+| **audit-service** | 8087 | Consumidor de `audit.events`. Persiste `audit_log` en esquema dedicado `saas_audit` | Spring Boot + JPA + Kafka |
+| **thirdparty-service** | 8099 | Terceros (persona natural), contactos y direcciones | Spring Boot + JPA + Outbox |
 | **discovery-service** | 8761 | Eureka — registro de servicios | Spring Cloud Eureka |
 | **config-server** | 8888 | Sirve `saas-config-repo/*.properties` | Spring Cloud Config |
-| **mysql** | 3306 | BD `saas_db` (compartida por auth + system) | MySQL 8.4 |
+| **mysql** | 3306 | BD `saas_db` (auth, system, business, thirdparty) + `saas_audit` (auditoría) | MySQL 8.4 |
 | **redis** | 6379 | Cache, JWT blacklist, rate-limit, dedup eventos | Redis 7.4 |
-| **kafka-1/2/3** | 9094/9095/9096 | Cluster Kafka (KRaft) | Confluent Kafka 7.8 |
+| **kafka-1** | 9094 | Kafka (KRaft, 1 broker en dev) | Confluent Kafka 7.8 |
 | **es-01** | 9200 | Elasticsearch (single-node en dev, cluster en prod) | Elasticsearch 8.17 |
 | **kibana** | 5601 | UI para Elasticsearch (DevTools, índices, queries) | Kibana 8.17 |
 | **kafdrop** | 9000 | UI para Kafka (topics, mensajes, consumer groups) | Kafdrop 4 |
@@ -228,15 +233,26 @@ curl http://localhost:9200/_cluster/health
 
 ### Modo IntelliJ (desarrollo día a día)
 
-```bash
-# 1. Solo la infra (Docker)
-docker compose up -d mysql redis kafka-1 kafka-2 kafka-3 es-01
+Se levanta en Docker **solo la infraestructura** (datos y mensajería) y **todos los microservicios se ejecutan desde IntelliJ** con el profile `local`.
 
-# 2. En IntelliJ, arrancar en este orden:
-#    config-server → discovery-service → auth-service → system-service → search-service → gateway-service
+```bash
+# 1. Solo lo necesario de Docker (infraestructura): MySQL, Redis, Kafka (1 broker) y Elasticsearch.
+#    -d = en segundo plano. Las UIs (kibana, kafdrop) y los micros NO se levantan aquí.
+docker compose up -d mysql redis kafka-1 es-01
+
+#    (opcional) UIs de apoyo:
+#    docker compose up -d kafdrop kibana
+
+# 2. En IntelliJ, arrancar los microservicios en este orden (profile=local):
+#    config-server → discovery-service → auth-service → system-service
+#    → thirdparty-service → business-service → search-service → audit-service → gateway-service
 ```
 
-> **Tip**: crea un Compound Run Config en IntelliJ con los 6 services y delays de ~8 segundos entre cada uno.
+> **Profile**: cada micro arranca con `local` (es el `spring.profiles.default`). En IntelliJ: Run Config → Active profiles: `local`, o VM option `-Dspring.profiles.active=local`.
+>
+> **Tip**: crea un *Compound* Run Config en IntelliJ con los 9 services y deja ~8 s de delay entre `config-server`, `discovery-service` y el resto (esperan a Eureka/Config).
+>
+> **Apagar la infra**: `docker compose stop mysql redis kafka-1 kafka-2 kafka-3 es-01` (conserva datos) · `docker compose down -v` (borra volúmenes/datos).
 
 ### Smoke test rápido
 
@@ -661,6 +677,82 @@ Todas las respuestas REST usan `ApiResponse<T>`:
 
 ---
 
+## 13.1 Endpoints — Thirdparty
+
+> Prefijo `/thirdparty` (context-path). Todo vía gateway `:8080` con `Authorization: Bearer <token>`. Las escrituras de tercero requieren rol `ADMIN`.
+
+**Terceros** (persona natural) — `/thirdparty/third-parties`
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/thirdparty/third-parties` | Listar |
+| GET | `/thirdparty/third-parties/{id}` | Por id |
+| GET | `/thirdparty/third-parties/document?documentTypeId={uuid}&documentNumber={n}` | Buscar por documento |
+| GET | `/thirdparty/third-parties/document/exists?documentTypeId={uuid}&documentNumber={n}` | ¿Existe? (boolean) |
+| POST | `/thirdparty/third-parties` | Crear (ADMIN) |
+| PUT | `/thirdparty/third-parties/{id}` | Actualizar (ADMIN) |
+| DELETE | `/thirdparty/third-parties/{id}` | Soft-delete (ADMIN) |
+
+**Contactos** (1:N) — `/thirdparty/third-party-contacts`
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/thirdparty/third-party-contacts?thirdPartyId={uuid}` | Contactos del tercero |
+| GET · POST · PUT · DELETE | `/thirdparty/third-party-contacts[/{id}]` | CRUD |
+
+**Direcciones** (1:N) — `/thirdparty/third-party-addresses`
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/thirdparty/third-party-addresses?thirdPartyId={uuid}` | Direcciones del tercero |
+| GET · POST · PUT · DELETE | `/thirdparty/third-party-addresses[/{id}]` | CRUD |
+
+> Búsqueda en Elasticsearch: `GET /search/third-parties?q=&enabled=&page=&size=&sort=` (ver sección 14).
+
+---
+
+## 13.2 Endpoints — Business
+
+> Prefijo `/business`. Todo vía gateway `:8080` con JWT. Las entidades **versionadas** (horarios, asignaciones, compensación) usan `PUT /{id}/supersede` para cambiar conservando el histórico, y exponen `/current` (vigente) además del listado (histórico completo).
+
+**Empresa y derivados**
+
+| Recurso | Ruta base | Filtros / extras |
+|---|---|---|
+| Empresas | `/business/businesses` | GET, GET `/{id}`, POST, PUT `/{id}`, DELETE `/{id}` |
+| Sedes | `/business/branches` | GET `?businessId=`, GET `/{id}`, POST, PUT, DELETE |
+| Propietarios (con %) | `/business/business-owners` | GET `?businessId=`, GET `/third-party/{id}`, CRUD |
+| Empleados | `/business/employees` | GET `?branchId=`, GET `/third-party/{id}`, CRUD |
+| Clientes (global) | `/business/clients` | GET, GET `/{id}`, GET `/third-party/{id}`, CRUD |
+
+**Servicios** (empresa define, sede ajusta)
+
+| Recurso | Ruta base | Filtros |
+|---|---|---|
+| Categorías de servicio | `/business/service-categories` | GET `?businessId=`, CRUD |
+| Servicios de empresa | `/business/business-services` | GET `?businessId=`, CRUD |
+| Servicios de sede | `/business/branch-services` | GET `?branchId=`, CRUD |
+
+**Horarios y turnos** (versionado temporal)
+
+| Recurso | Ruta base | Extras |
+|---|---|---|
+| Horario de empresa | `/business/business-schedules` | GET `?businessId=` (histórico), GET `/current?businessId=`, POST, PUT `/{id}/supersede`, DELETE |
+| Turnos horario empresa | `/business/business-schedule-shifts` | GET `?businessScheduleId=`, CRUD |
+| Horario de sede | `/business/branch-schedules` | GET `?branchId=`, GET `/current?branchId=`, POST, PUT `/{id}/supersede`, DELETE |
+| Turnos horario sede | `/business/branch-schedule-shifts` | GET `?branchScheduleId=`, CRUD |
+| Asignación turno↔empleado | `/business/employee-shift-assignments` | GET `?employeeId=` (histórico), GET `/current?employeeId=`, POST, PUT `/{id}/supersede`, DELETE |
+
+**Compensación** (versionado)
+
+| Recurso | Ruta base | Extras |
+|---|---|---|
+| Compensación de empleado | `/business/employee-compensations` | GET `?employeeId=` (histórico), GET `/current?employeeId=`, POST, PUT `/{id}/supersede`, DELETE |
+
+**Catálogos nuevos** (en system-service, vía `GET /system/list/{catalogo}`): `shift_type` (mañana/tarde/noche), `schedule_type` (continuo/discontinuo), `employee_position`, `address_type`. CRUD de catálogo: `POST/PUT/DELETE /system/list/{catalogo}[/{id}]` (ADMIN).
+
+---
+
 ## 14. Endpoints — Search (Elasticsearch)
 
 > Búsquedas optimizadas con full-text + filtros + paginación + ordenamiento.
@@ -861,7 +953,7 @@ Solo la infra corre en Docker; los servicios Java en IntelliJ.
 
 ```bash
 # Apaga MySQL/Redis local si los tienes (puertos 3306, 6379)
-docker compose up -d mysql redis kafka-1 kafka-2 kafka-3 es-01
+docker compose up -d mysql redis kafka-1 es-01
 ```
 
 En IntelliJ, arrancar en orden:
@@ -1269,154 +1361,4 @@ docker exec saas-mysql mysql -uroot -prootpassword saas_db -e \
 | Eventos publicados a Kafka pero ES no los recibe | Consumer group mal configurado | `kafka-consumer-groups --describe` |
 | Documentos duplicados en ES | Sin dedup Redis | Verificar Redis y `ProcessedEventCache` |
 | `No servers available for service: ...` | Eureka aún no descubrió | `ReindexService` ahora espera 60s, suficiente. Si no, reiniciar |
-| Consumer atascado en mismo mensaje | Error en handler, retry infinito | Ver log → encontrar bug, posible DLQ |
-
-### Elasticsearch
-
-| Síntoma | Causa | Solución |
-|---|---|---|
-| ES status `red` | Cluster roto | `GET /_cluster/health?level=indices` |
-| ES status `yellow` permanente | Réplicas sin asignar (1 nodo) | Normal en dev. Mappings con `replicas: 0` para green |
-| `strict_dynamic_mapping_exception [_class]` | Spring Data ES escribió `_class` | Usar `@Document(writeTypeHint=FALSE)` |
-| `strict_dynamic_mapping_exception [id]` | Mapping no incluye `id` | Agregar `"id": { "type": "keyword" }` al JSON |
-| Reindex tarda mucho | refresh interval = 1s + replicas = 1 | Bajar a `refresh: 30s, replicas: 0` durante reindex |
-
-### Frontend / CORS
-
-| Síntoma | Causa | Solución |
-|---|---|---|
-| `No 'Access-Control-Allow-Origin' header` | Origen no listado | Agregar a `saas.cors.allowed-origins` |
-| Preflight 401 | Security intercepta OPTIONS | Verificar `.cors(Customizer.withDefaults())` en SecurityConfig |
-| 404 sin headers CORS | Path no existe | Verificar ruta en `RouteConfig.java` |
-| El front recibe error CORS en cualquier endpoint | El front pega a `/api/...` | Quitar `/api/` del front. Las rutas son limpias |
-
----
-
-## 27. Producción y hardening
-
-### Antes de salir a producción
-
-1. **Cambiar passwords** en `.env` y todos los seeds.
-2. **JWT secret** vía env var (`JWT_SECRET`, mínimo 32 chars).
-3. **Activar xpack security en ES**:
-   ```yaml
-   - xpack.security.enabled=true
-   - xpack.security.transport.ssl.enabled=true
-   ```
-4. **Subir a 3 nodos ES** (descomentar `es-02` y `es-03` en `docker-compose.yml`).
-5. **Volver a `replicas: 1`** en los mappings JSON.
-6. **HTTPS con reverse proxy** (nginx) frente al gateway.
-7. **Eliminar Kafdrop y Kibana** (o ponerlos detrás de auth + VPN).
-8. **Cerrar puertos internos** (3306, 6379, 9200, 9094-9096) en el firewall — solo 443 abierto.
-9. **Activar fail2ban** para SSH y HTTP.
-10. **Backups automáticos** (cron + `backup.sh`).
-11. **Monitoreo**:
-    - Outbox lag: `count(*) WHERE Status='PENDING' AND CreatedAt < now() - 30s`
-    - Kafka consumer lag: `kafka-consumer-groups --describe`
-    - ES disk usage: `GET /_cat/allocation?v`
-    - JVM heap: `actuator/metrics/jvm.memory.used`
-
-### Capacity planning
-
-| Volumen | Cluster mínimo |
-|---|---|
-| <1M docs, <100 events/s | 1 ES + 1 Kafka (dev) |
-| <10M docs, <1K events/s | 3 ES × 2GB heap, 3 Kafka × 1GB |
-| <100M docs, <10K events/s | 5 ES × 4GB heap, 5 Kafka × 2GB |
-
-### Variables de producción típicas
-
-```bash
-export SPRING_PROFILES_ACTIVE=prod
-export DB_URL='jdbc:mysql://prod-db.empresa.com:3306/saas_db?...'
-export DB_USERNAME=saasapp
-export DB_PASSWORD='<secret>'
-export REDIS_HOST=redis.empresa.com
-export REDIS_PASSWORD='<secret>'
-export EUREKA_URL='http://eureka.empresa.com:8761/eureka/'
-export JWT_SECRET='<min-32-chars>'
-export JWT_EXPIRATION_MS=900000              # 15 min
-export JWT_REFRESH_EXPIRATION_MS=604800000   # 7 días
-export ES_JAVA_OPTS='-Xms2g -Xmx2g'
-export CORS_ORIGINS='https://app.empresa.com,https://admin.empresa.com'
-```
-
----
-
-## 📎 Apéndices
-
-### A. Smoke test completo (PowerShell)
-
-```powershell
-# Login
-$resp = Invoke-RestMethod -Uri http://localhost:8080/auth/login -Method POST `
-  -ContentType "application/json" `
-  -Body '{"usernameOrEmail":"admin","password":"Admin123!"}'
-$token = $resp.data.tokens.accessToken
-$headers = @{ Authorization = "Bearer $token" }
-
-# Mis menús
-Invoke-RestMethod -Uri http://localhost:8080/system/menus/me -Headers $headers | ConvertTo-Json -Depth 6
-
-# Buscar roles en ES
-Invoke-RestMethod -Uri "http://localhost:8080/search/roles?q=admin" -Headers $headers | ConvertTo-Json -Depth 4
-
-# Buscar usuarios en ES
-Invoke-RestMethod -Uri "http://localhost:8080/search/users?roleCodes=ADMIN" -Headers $headers | ConvertTo-Json -Depth 4
-
-# Catálogo de tipos de documento
-Invoke-RestMethod -Uri http://localhost:8080/system/system-lists/code/TIPOS_DOCUMENTO/items -Headers $headers
-```
-
-### B. Cluster Kafka — debugging
-
-```bash
-# Crear/listar topics
-docker exec saas-kafka-1 kafka-topics --bootstrap-server kafka-1:9092 --list
-
-# Detalles de un topic
-docker exec saas-kafka-1 kafka-topics --bootstrap-server kafka-1:9092 \
-  --describe --topic domain.events
-
-# Producer de consola
-docker exec -it saas-kafka-1 kafka-console-producer \
-  --bootstrap-server kafka-1:9092 --topic domain.events \
-  --property "parse.key=true" --property "key.separator=:"
-
-# Consumer de consola (ver eventos en tiempo real)
-docker exec -it saas-kafka-1 kafka-console-consumer \
-  --bootstrap-server kafka-1:9092 --topic domain.events --from-beginning
-
-# Reset offset de consumer group (para forzar replay)
-docker exec saas-kafka-1 kafka-consumer-groups \
-  --bootstrap-server kafka-1:9092 --group search-indexer \
-  --reset-offsets --to-earliest --topic domain.events --execute
-```
-
-### C. Cluster ES — operaciones comunes
-
-```bash
-# Ver mappings de un índice
-curl http://localhost:9200/users/_mapping?pretty
-
-# Borrar un índice (cuidado!)
-curl -X DELETE http://localhost:9200/users_v1
-
-# Forzar refresh
-curl -X POST http://localhost:9200/users/_refresh
-
-# Búsqueda directa (debugging)
-curl -X POST http://localhost:9200/users/_search?pretty -H 'Content-Type: application/json' -d '{
-  "query": { "match": { "fullName": "juan" } }
-}'
-```
-
----
-
-## Licencia
-
-Propietario — Uso interno.
-
----
-
-**Para deploy en VPS**: ver [`DEPLOY-README.md`](./DEPLOY-README.md).
+| Consumer atascado en mismo mensaje | E

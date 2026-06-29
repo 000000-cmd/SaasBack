@@ -47,4 +47,13 @@ public abstract class CodeCrudService<T extends BaseDomain & ICodeable, ID>
         return codeRepository.findByCode(code)
                 .orElseThrow(() -> new ResourceNotFoundException(getResourceName(), "Code", code));
     }
+
+    /**
+     * Las entidades por código (roles, listas del sistema, catálogos) son de
+     * administración: cada cambio se audita, incluso si el modificador es el
+     * mismo que las creó. Así no se pierden modificaciones poco frecuentes pero
+     * sensibles del administrador.
+     */
+    @Override
+    protected boolean alwaysAudit() { return true; }
 }

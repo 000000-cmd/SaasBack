@@ -61,4 +61,10 @@ public class RolePermissionService implements IRolePermissionUseCase {
         }
         rolePermRepo.replacePermissionsForRole(roleId, permissionIds);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getPermissionCodesByRoleCodes(Set<String> roleCodes) {
+        return rolePermRepo.findPermissionCodesByRoleCodes(roleCodes);
+    }
 }

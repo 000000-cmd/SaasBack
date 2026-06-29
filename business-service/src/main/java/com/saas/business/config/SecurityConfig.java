@@ -26,6 +26,7 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**", "/api/info", "/api/version").permitAll()
+                        .requestMatchers("/public/**").permitAll()
                         // Endpoints internos consumidos por auth-service via Feign
                         .requestMatchers("/internal/**").permitAll()
                         .anyRequest().authenticated()

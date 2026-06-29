@@ -2,6 +2,7 @@ package com.saas.auth.infrastructure.controller;
 
 import com.saas.auth.application.dto.request.LoginRequest;
 import com.saas.auth.application.dto.request.RefreshTokenRequest;
+import com.saas.auth.application.dto.request.RegisterOwnerRequest;
 import com.saas.auth.application.dto.response.LoginResponse;
 import com.saas.auth.application.dto.response.TokenPairResponse;
 import com.saas.auth.domain.port.in.IAuthUseCase;
@@ -31,6 +32,15 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(ApiResponse.success(authUseCase.login(request), "Login exitoso"));
+    }
+
+    /**
+     * Alta self-service de un dueño + su negocio. Endpoint PÚBLICO (sin JWT):
+     * crea la cuenta con rol OWNER y devuelve la sesión iniciada.
+     */
+    @PostMapping("/register-owner")
+    public ResponseEntity<ApiResponse<LoginResponse>> registerOwner(@Valid @RequestBody RegisterOwnerRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authUseCase.registerOwner(request), "Registro exitoso"));
     }
 
     @PostMapping("/refresh")

@@ -5,7 +5,11 @@ import com.saas.system.application.dto.request.PermissionRequest;
 import com.saas.system.application.dto.response.PermissionResponse;
 import com.saas.system.application.mapper.PermissionMapper;
 import com.saas.system.domain.model.Permission;
+import com.saas.common.security.IUserPrincipal;
 import com.saas.system.domain.port.in.IPermissionUseCase;
+import com.saas.system.domain.port.in.IRolePermissionUseCase;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -21,11 +26,27 @@ import java.util.UUID;
 public class PermissionController {
 
     private final IPermissionUseCase useCase;
+    private final IRolePermissionUseCase rolePermissionUseCase;
     private final PermissionMapper mapper;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<PermissionResponse>>> list() {
         return ResponseEntity.ok(ApiResponse.success(useCase.getAll().stream().map(mapper::toResponse).toList()));
+    }
+
+    /** Codigos de permisos efectivos del usuario autenticado (segun sus roles del JWT). */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<Set<String>>> myPermissions() {
+        return ResponseEntity.ok(ApiResponse.success(
+                rolePermissionUseCase.getPermissionCodesByRoleCodes(currentRoles())));
+    }
+
+    private Set<String> currentRoles() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof IUserPrincipal p && p.getRoles() != null) {
+            return p.getRoles();
+        }
+        return Set.of();
     }
 
     @GetMapping("/{id}")

@@ -1,12 +1,19 @@
 package com.saas.auth.domain.port.in;
 
 import com.saas.auth.application.dto.request.LoginRequest;
+import com.saas.auth.application.dto.request.RegisterOwnerRequest;
 import com.saas.auth.application.dto.response.LoginResponse;
 import com.saas.auth.application.dto.response.TokenPairResponse;
 
 public interface IAuthUseCase {
 
     LoginResponse login(LoginRequest request);
+
+    /**
+     * Alta self-service de un dueño: crea la cuenta con rol OWNER y devuelve la
+     * sesión ya iniciada (mismos tokens que el login).
+     */
+    LoginResponse registerOwner(RegisterOwnerRequest request);
 
     TokenPairResponse refresh(String refreshToken);
 

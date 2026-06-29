@@ -11,6 +11,7 @@ import lombok.ToString;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -63,6 +64,11 @@ public abstract class BaseEntity {
     @LastModifiedDate
     @Column(name = "AuditDate", nullable = false)
     private LocalDateTime auditDate;
+
+    @CreatedBy
+    @JdbcTypeCode(SqlTypes.CHAR)
+    @Column(name = "CreatedBy", length = 36, updatable = false)
+    private UUID createdBy;
 
     @CreatedDate
     @Column(name = "CreatedDate", nullable = false, updatable = false)

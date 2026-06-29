@@ -17,4 +17,7 @@ public interface IRolePermissionRepositoryPort extends IGenericRepositoryPort<Ro
     void replacePermissionsForRole(UUID roleId, Set<UUID> permissionIds);
 
     boolean existsByRoleIdAndPermissionId(UUID roleId, UUID permissionId);
+
+    /** Codigos de permisos efectivos para un conjunto de codigos de rol. */
+    Set<String> findPermissionCodesByRoleCodes(Set<String> roleCodes);
 }

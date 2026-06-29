@@ -39,6 +39,7 @@ public interface IBaseMapper<D, E> {
     @Mapping(target = "id",          ignore = true)
     @Mapping(target = "auditUser",   ignore = true)
     @Mapping(target = "auditDate",   ignore = true)
+    @Mapping(target = "createdBy",   ignore = true)
     @Mapping(target = "createdDate", ignore = true)
     void updateEntityFromDomain(D incoming, @MappingTarget E target);
 }

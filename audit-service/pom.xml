@@ -54,6 +54,16 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Flyway: audit-service gobierna su propia BD saas_audit -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
         <!-- Redis (idempotencia de eventos) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

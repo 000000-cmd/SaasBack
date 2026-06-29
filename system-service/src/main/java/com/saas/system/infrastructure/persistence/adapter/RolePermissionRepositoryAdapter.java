@@ -70,4 +70,10 @@ public class RolePermissionRepositoryAdapter
                 })
                 .forEach(jpa::save);
     }
+
+    @Override
+    public Set<String> findPermissionCodesByRoleCodes(Set<String> roleCodes) {
+        return (roleCodes == null || roleCodes.isEmpty()) ? Set.of()
+                : jpa.findPermissionCodesByRoleCodes(roleCodes);
+    }
 }
