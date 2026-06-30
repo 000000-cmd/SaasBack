@@ -614,6 +614,28 @@ WHERE (m.Id LIKE '77770001-0000-%' OR m.Id LIKE '77770002-0000-%')
       AND mr.RoleId = '11111111-0000-0000-0000-000000000001'
 );
 
+-- ===================== [menus tenant - OWNER] =====================
+-- Menus del dueño (rol OWNER). Apuntan a rutas /tenant/* (área separada de /admin).
+-- El sidebar del dueño se nutre de estos via /menus/me (config por rol).
+INSERT INTO menu (Id, Code, Name, Icon, Route, ParentId, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
+('77771001-0000-0000-0000-000000000001', 'TENANT_DASHBOARD',  'Panel',            'activity',   '/tenant/dashboard',  NULL, 1, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000002', 'TENANT_BUSINESS',   'Mi negocio',       'building-2', '/tenant/mi-negocio', NULL, 2, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000005', 'TENANT_SERVICES',   'Servicios',        'scissors',   '/tenant/servicios',  NULL, 3, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000006', 'TENANT_BRANCHES',   'Sedes',            'map-pin',    '/tenant/sedes',      NULL, 4, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000007', 'TENANT_EMPLOYEES',  'Empleados',        'users',      '/tenant/empleados',  NULL, 5, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000003', 'TENANT_PROFILE',    'Mi perfil',        'user',       '/tenant/profile',    NULL, 9, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000004', 'TENANT_ONBOARDING', 'Crear mi negocio', 'plus',       '/tenant/onboarding', NULL, 8, TRUE, TRUE, NULL, @now, @now);
+
+INSERT INTO menu_role (Id, MenuId, RoleId, Enabled, Visible, AuditUser, AuditDate, CreatedDate)
+SELECT UUID(), m.Id, '11111111-0000-0000-0000-000000000004', TRUE, TRUE, NULL, @now, @now
+FROM menu m
+WHERE m.Id LIKE '77771001-0000-%'
+  AND NOT EXISTS (
+    SELECT 1 FROM menu_role mr
+    WHERE mr.MenuId = m.Id
+      AND mr.RoleId = '11111111-0000-0000-0000-000000000004'
+);
+
 -- ---------------------------------------------------------------------
 -- SEED: terceros de ejemplo
 -- ---------------------------------------------------------------------

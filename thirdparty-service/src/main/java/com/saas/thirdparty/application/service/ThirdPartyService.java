@@ -61,6 +61,16 @@ public class ThirdPartyService extends GenericCrudService<ThirdParty, UUID>
         return thirdPartyRepo.existsByDocument(documentTypeId, documentNumber);
     }
 
+    @Override @Transactional(readOnly = true)
+    public Optional<ThirdParty> findByUserId(UUID userId) {
+        return thirdPartyRepo.findByUserId(userId);
+    }
+
+    @Override @Transactional(readOnly = true)
+    public java.util.List<ThirdParty> findByIds(java.util.Collection<UUID> ids) {
+        return thirdPartyRepo.findByIds(ids);
+    }
+
     @Override protected void onAfterCreate(ThirdParty saved) { reindexPublisher.publishUpsert(saved.getId(), true); }
     @Override protected void onAfterUpdate(ThirdParty existing, ThirdParty updated) { reindexPublisher.publishUpsert(updated.getId(), false); }
     @Override protected void onAfterDelete(UUID id, ThirdParty deletedSnapshot) { reindexPublisher.publishDelete(id, deletedSnapshot); }

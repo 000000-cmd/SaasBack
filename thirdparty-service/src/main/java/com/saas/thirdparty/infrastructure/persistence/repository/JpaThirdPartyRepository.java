@@ -13,4 +13,6 @@ public interface JpaThirdPartyRepository extends JpaRepository<ThirdPartyEntity,
     Optional<ThirdPartyEntity> findByDocumentTypeIdAndDocumentNumber(UUID documentTypeId, String documentNumber);
 
     boolean existsByDocumentTypeIdAndDocumentNumber(UUID documentTypeId, String documentNumber);
+
+    Optional<ThirdPartyEntity> findByUserId(UUID userId);
 }

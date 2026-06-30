@@ -1,7 +1,6 @@
 package com.saas.thirdparty.infrastructure.controller;
 
 import com.saas.common.dto.ApiResponse;
-import com.saas.thirdparty.application.dto.event.ThirdPartyEventPayload;
 import com.saas.thirdparty.application.dto.request.ThirdPartyRequest;
 import com.saas.thirdparty.application.dto.response.ThirdPartyDetailResponse;
 import com.saas.thirdparty.application.dto.response.ThirdPartyResponse;
@@ -59,16 +58,6 @@ public class ThirdPartyController {
                 contactMapper.toResponseList(contactUseCase.findByThirdParty(id)),
                 addressMapper.toResponseList(addressUseCase.findByThirdParty(id)));
         return ResponseEntity.ok(ApiResponse.success(detail));
-    }
-
-    /**
-     * Proyeccion de la fuente (BD) al read-model de Elasticsearch: es EXACTAMENTE
-     * lo que el indice deberia contener. El front lo enfrenta contra el documento
-     * almacenado en ES para detectar desincronizacion (misma forma a ambos lados).
-     */
-    @GetMapping("/{id}/index-preview")
-    public ResponseEntity<ApiResponse<ThirdPartyEventPayload>> indexPreview(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(ThirdPartyEventPayload.from(useCase.getById(id))));
     }
 
     /** Reindexa el tercero (read-model de busqueda) en Elasticsearch. */

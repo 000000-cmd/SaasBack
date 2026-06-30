@@ -37,4 +37,14 @@ public class ThirdPartyRepositoryAdapter
     public boolean existsByDocument(UUID documentTypeId, String documentNumber) {
         return jpa.existsByDocumentTypeIdAndDocumentNumber(documentTypeId, documentNumber);
     }
+
+    @Override
+    public Optional<ThirdParty> findByUserId(UUID userId) {
+        return jpa.findByUserId(userId).map(getMapper()::toDomain);
+    }
+
+    @Override
+    public java.util.List<ThirdParty> findByIds(java.util.Collection<UUID> ids) {
+        return jpa.findAllById(ids).stream().map(getMapper()::toDomain).toList();
+    }
 }

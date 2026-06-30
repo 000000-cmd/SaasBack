@@ -1,10 +1,14 @@
 package com.saas.business.infrastructure.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.LocalDate;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -19,6 +23,14 @@ public interface ThirdPartyClient {
 
     @PostMapping("/internal/third-parties")
     PersonResponse createPerson(@RequestBody CreatePersonRequest request);
+
+    /** Resuelve la persona vinculada a una cuenta. Lanza 404 (FeignException) si no existe. */
+    @GetMapping("/internal/third-parties/by-user/{userId}")
+    PersonResponse personByUser(@PathVariable("userId") UUID userId);
+
+    /** Nombres de personas en lote (id -> nombre completo). */
+    @PostMapping("/internal/third-parties/names")
+    Map<String, String> personNames(@RequestBody Set<UUID> ids);
 
     /** Espejo de ThirdPartyRequest (solo los campos que el aprovisionamiento envia). */
     record CreatePersonRequest(
