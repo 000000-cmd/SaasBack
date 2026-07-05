@@ -18,6 +18,7 @@ public record ThirdPartyResponse(
         UUID genderId,
         LocalDate birthDate,
         String photoUrl,
+        Boolean biometricEnabled,
         Boolean enabled,
         Boolean visible,
         LocalDateTime createdDate,

@@ -18,6 +18,7 @@ public class RouteValidator {
             "/auth/refresh",
             "/auth/register-owner",
             "/business/public",
+            "/system/public",
             "/actuator",
             "/api/info",
             "/api/version"

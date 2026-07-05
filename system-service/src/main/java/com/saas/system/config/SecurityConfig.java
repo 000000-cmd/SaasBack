@@ -28,6 +28,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**", "/api/info", "/api/version").permitAll()
                         // Endpoints internos consumidos por auth-service via Feign
                         .requestMatchers("/internal/**").permitAll()
+                        // Distribucion publica del APK (link compartible + chequeo de version)
+                        .requestMatchers("/public/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)

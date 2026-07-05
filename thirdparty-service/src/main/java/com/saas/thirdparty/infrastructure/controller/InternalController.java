@@ -52,6 +52,13 @@ public class InternalController {
         return mapper.toResponse(useCase.create(mapper.toDomain(req)));
     }
 
+    /** Pre-check S2S de duplicado de documento (evita huerfanos en orquestaciones). */
+    @GetMapping("/third-parties/document/exists")
+    public Map<String, Boolean> documentExists(@RequestParam UUID documentTypeId,
+                                               @RequestParam String documentNumber) {
+        return Map.of("exists", useCase.existsByDocument(documentTypeId, documentNumber));
+    }
+
     /** Nombres de personas en lote (id -> nombre completo). Para listas detalladas S2S. */
     @PostMapping("/third-parties/names")
     public Map<String, String> names(@RequestBody Set<UUID> ids) {

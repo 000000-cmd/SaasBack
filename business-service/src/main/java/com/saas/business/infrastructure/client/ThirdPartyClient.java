@@ -32,6 +32,11 @@ public interface ThirdPartyClient {
     @PostMapping("/internal/third-parties/names")
     Map<String, String> personNames(@RequestBody Set<UUID> ids);
 
+    /** Pre-check de duplicado de documento antes de orquestar un alta. */
+    @GetMapping("/internal/third-parties/document/exists")
+    Map<String, Boolean> documentExists(@org.springframework.web.bind.annotation.RequestParam("documentTypeId") UUID documentTypeId,
+                                        @org.springframework.web.bind.annotation.RequestParam("documentNumber") String documentNumber);
+
     /** Espejo de ThirdPartyRequest (solo los campos que el aprovisionamiento envia). */
     record CreatePersonRequest(
             UUID documentTypeId,

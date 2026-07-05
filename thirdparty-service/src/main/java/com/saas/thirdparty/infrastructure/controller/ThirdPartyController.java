@@ -18,7 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -39,10 +38,8 @@ public class ThirdPartyController {
     private final ThirdPartyAddressMapper addressMapper;
     private final ThirdPartyReindexPublisher reindexPublisher;
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<ThirdPartyResponse>>> list() {
-        return ResponseEntity.ok(ApiResponse.success(mapper.toResponseList(useCase.getAll())));
-    }
+    // Sin GET de listado aqui: el listado/busqueda es responsabilidad del read
+    // model en search-service (/search/third-parties) — CQRS, no se duplica.
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ThirdPartyResponse>> getById(@PathVariable UUID id) {
@@ -69,6 +66,27 @@ public class ThirdPartyController {
         return ResponseEntity.ok(ApiResponse.success(null, "Tercero reindexado"));
     }
 
+    /** Tercero vinculado a una cuenta de usuario (el APK resuelve "mi persona"). */
+    @GetMapping("/by-user/{userId}")
+    public ResponseEntity<ApiResponse<ThirdPartyResponse>> getByUser(@PathVariable UUID userId) {
+        return useCase.findByUserId(userId)
+                .map(t -> ResponseEntity.ok(ApiResponse.success(mapper.toResponse(t))))
+                .orElseGet(() -> ResponseEntity.ok(ApiResponse.error("Tercero no encontrado", 404)));
+    }
+
+    /**
+     * Habilita/deshabilita el ingreso con huella en el APK. La huella se valida
+     * en el dispositivo; aqui solo se registra el consentimiento del tercero.
+     */
+    @PatchMapping("/{id}/biometric")
+    public ResponseEntity<ApiResponse<ThirdPartyResponse>> setBiometric(@PathVariable UUID id,
+                                                                        @RequestParam boolean enabled) {
+        ThirdParty patch = ThirdParty.builder().biometricEnabled(enabled).build();
+        return ResponseEntity.ok(ApiResponse.success(
+                mapper.toResponse(useCase.update(id, patch)),
+                enabled ? "Ingreso con huella habilitado" : "Ingreso con huella deshabilitado"));
+    }
+
     @GetMapping("/document")
     public ResponseEntity<ApiResponse<ThirdPartyResponse>> getByDocument(
             @RequestParam UUID documentTypeId,
@@ -78,13 +96,8 @@ public class ThirdPartyController {
                 .orElseGet(() -> ResponseEntity.ok(ApiResponse.error("Tercero no encontrado", 404)));
     }
 
-    @GetMapping("/document/exists")
-    public ResponseEntity<ApiResponse<Boolean>> existsByDocument(
-            @RequestParam UUID documentTypeId,
-            @RequestParam String documentNumber) {
-        return ResponseEntity.ok(ApiResponse.success(
-                useCase.existsByDocument(documentTypeId, documentNumber)));
-    }
+    // El "exists" publico es redundante: /document ya responde 404 cuando no
+    // existe. El pre-check S2S de duplicados vive en /internal (Feign).
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
