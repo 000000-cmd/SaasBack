@@ -89,10 +89,20 @@ public class UserService extends GenericCrudService<User, UUID> implements IUser
 
     @Override
     @Transactional
+    public void markFirstLoginSeen(UUID userId) {
+        User user = getById(userId);
+        if (Boolean.FALSE.equals(user.getIsFirstLogin())) return;
+        user.setIsFirstLogin(false);
+        update(userId, user);
+    }
+
+    @Override
+    @Transactional
     public User createWithPassword(User user, String rawPassword) {
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
-        if (user.getTheme() == null)        user.setTheme("light");
-        if (user.getLanguageCode() == null) user.setLanguageCode("es-CO");
+        if (user.getTheme() == null)         user.setTheme("light");
+        if (user.getLanguageCode() == null)  user.setLanguageCode("es-CO");
+        if (user.getIsFirstLogin() == null)  user.setIsFirstLogin(true);
         User userCreated = create(user);
 
         // Emitir evento USER_CREATED

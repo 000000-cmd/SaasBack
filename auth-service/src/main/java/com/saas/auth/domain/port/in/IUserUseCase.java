@@ -21,4 +21,7 @@ public interface IUserUseCase extends IGenericUseCase<User, UUID> {
 
     /** Carga el usuario con sus roleCodes resueltos (para login / contexto). */
     User loadWithRoles(UUID userId);
+
+    /** Marca que el usuario ya vio el modal de bienvenida (isFirstLogin=false). */
+    void markFirstLoginSeen(UUID userId);
 }

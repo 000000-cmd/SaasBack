@@ -18,6 +18,7 @@ public record UserResponse(
         String theme,
         String languageCode,
         LocalDateTime lastLoginAt,
+        Boolean isFirstLogin,
         Boolean enabled,
         Boolean visible,
         Set<String> roleCodes,

@@ -1,9 +1,6 @@
 package com.saas.thirdparty.domain.model;
 
 import com.saas.common.model.BaseDomain;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -51,8 +48,9 @@ public class ThirdParty extends BaseDomain {
 
     private String photoUrl;
 
-    public ThirdParty(@NotNull UUID uuid,
-                      @NotBlank @Size(max = 40) String s, UUID uuid1, @NotBlank @Size(max = 80) String s1, @Size(max = 80) String s2, @NotBlank @Size(max = 80) String s3, @Size(max = 80) String s4, UUID uuid2, LocalDate localDate, @Size(max = 500) String s5, UUID businessId) {
-        super();
-    }
+    /**
+     * Ingreso con huella habilitado en el APK. La huella nunca viaja al back:
+     * se valida en el dispositivo; esto registra el consentimiento del tercero.
+     */
+    private Boolean biometricEnabled;
 }

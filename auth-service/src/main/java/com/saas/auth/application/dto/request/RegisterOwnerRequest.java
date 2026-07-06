@@ -2,21 +2,18 @@ package com.saas.auth.application.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
- * Alta self-service de un dueño + su negocio (registro mínimo, público).
+ * Alta self-service de un dueño (registro MÍNIMO, público).
  *
- * <p>auth-service crea la cuenta del dueño con el rol fijo {@code OWNER} y
- * devuelve los tokens de sesión. El negocio (nombre + slug) se captura
- * aquí; su aprovisionamiento completo en business-service es el paso posterior
- * (no se orquesta a ciegas entre microservicios desde este endpoint).
+ * <p>Solo la cuenta: auth-service crea el usuario con el rol fijo {@code OWNER} y
+ * devuelve los tokens de sesión. Los datos del negocio (tipo, nombre, slug) NO se
+ * piden aquí: se completan después en el flujo de "completar empresa" (modal +
+ * widget del dashboard), que pre-rellena el nombre desde esta cuenta — así no se
+ * duplica lo ya capturado.</p>
  */
 public record RegisterOwnerRequest(
-        @NotBlank @Size(max = 120) String businessName,
-        @NotBlank @Pattern(regexp = "^[a-z0-9-]{3,63}$",
-                message = "El slug admite minúsculas, números y guiones (3-63)") String slug,
         @NotBlank @Size(max = 80) String firstName,
         @NotBlank @Size(max = 80) String lastName,
         @NotBlank @Email @Size(max = 120) String email,

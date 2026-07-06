@@ -74,6 +74,7 @@ public class DataInitializer {
                 .lastName(adminLastName)
                 .theme("light")
                 .languageCode("es-CO")
+                .isFirstLogin(false) // el admin no ve el onboarding de negocio
                 .build();
 
         User created = userUseCase.createWithPassword(admin, adminPassword);

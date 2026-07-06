@@ -61,4 +61,7 @@ public class ThirdPartyEntity extends BaseEntity {
 
     @Column(name = "PhotoUrl", length = 500)
     private String photoUrl;
+
+    @Column(name = "BiometricEnabled", nullable = false)
+    private Boolean biometricEnabled = false;
 }

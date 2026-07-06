@@ -37,6 +37,8 @@ CREATE TABLE app_user (
     Theme           VARCHAR(30)  NOT NULL DEFAULT 'light',
     LanguageCode    VARCHAR(10)  NOT NULL DEFAULT 'es-CO',
     LastLoginAt     DATETIME(6)  NULL,
+    -- TRUE hasta que el tercero ve el modal de bienvenida por primera vez.
+    IsFirstLogin    BOOLEAN      NOT NULL DEFAULT TRUE,
     Enabled         BOOLEAN      NOT NULL DEFAULT TRUE,
     Visible         BOOLEAN      NOT NULL DEFAULT TRUE,
     CreatedBy CHAR(36) NULL,
@@ -434,6 +436,9 @@ CREATE TABLE third_party (
     GenderId       CHAR(36)     NULL,
     BirthDate      DATE         NULL,
     PhotoUrl       VARCHAR(500) NULL,
+    -- Habilita el ingreso con huella en el APK (la huella se valida en el
+    -- dispositivo; aqui solo queda el consentimiento/estado del tercero).
+    BiometricEnabled BOOLEAN    NOT NULL DEFAULT FALSE,
     Enabled        BOOLEAN      NOT NULL DEFAULT TRUE,
     Visible        BOOLEAN      NOT NULL DEFAULT TRUE,
     CreatedBy CHAR(36) NULL,
@@ -472,7 +477,8 @@ INSERT INTO role (Id, Code, Name, Description, Enabled, Visible, AuditUser, Audi
     ('11111111-0000-0000-0000-000000000001', 'ADMIN', 'Administrador',  'Acceso total al sistema',         TRUE, TRUE, NULL, @now, @now),
     ('11111111-0000-0000-0000-000000000002', 'USER',  'Usuario',        'Usuario estandar autenticado',    TRUE, TRUE, NULL, @now, @now),
     ('11111111-0000-0000-0000-000000000003', 'GUEST', 'Invitado',       'Acceso limitado de solo lectura', TRUE, TRUE, NULL, @now, @now),
-    ('11111111-0000-0000-0000-000000000004', 'OWNER', 'Dueño',          'Dueño de un negocio (tenant)',    TRUE, TRUE, NULL, @now, @now);
+    ('11111111-0000-0000-0000-000000000004', 'OWNER', 'Dueño',          'Dueño de un negocio (tenant)',    TRUE, TRUE, NULL, @now, @now),
+    ('11111111-0000-0000-0000-000000000005', 'EMPLOYEE', 'Empleado',    'Empleado de un negocio (solo APK movil)', TRUE, TRUE, NULL, @now, @now);
 
 -- ---------------------------------------------------------------------
 -- PERMISSIONS
@@ -509,7 +515,11 @@ INSERT INTO role_permission (Id, RoleId, PermissionId, Enabled, Visible, AuditUs
     ('33333333-0000-0000-0000-000000000041', '11111111-0000-0000-0000-000000000004', '22222222-0000-0000-0000-000000000001', TRUE, TRUE, NULL, @now, @now),
     ('33333333-0000-0000-0000-000000000042', '11111111-0000-0000-0000-000000000004', '22222222-0000-0000-0000-000000000002', TRUE, TRUE, NULL, @now, @now),
     ('33333333-0000-0000-0000-000000000043', '11111111-0000-0000-0000-000000000004', '22222222-0000-0000-0000-000000000003', TRUE, TRUE, NULL, @now, @now),
-    ('33333333-0000-0000-0000-000000000044', '11111111-0000-0000-0000-000000000004', '22222222-0000-0000-0000-000000000004', TRUE, TRUE, NULL, @now, @now);
+    ('33333333-0000-0000-0000-000000000044', '11111111-0000-0000-0000-000000000004', '22222222-0000-0000-0000-000000000004', TRUE, TRUE, NULL, @now, @now),
+    -- EMPLOYEE -> operacion basica desde el APK (rol fijo referenciado al crear empleados)
+    ('33333333-0000-0000-0000-000000000051', '11111111-0000-0000-0000-000000000005', '22222222-0000-0000-0000-000000000001', TRUE, TRUE, NULL, @now, @now),
+    ('33333333-0000-0000-0000-000000000052', '11111111-0000-0000-0000-000000000005', '22222222-0000-0000-0000-000000000002', TRUE, TRUE, NULL, @now, @now),
+    ('33333333-0000-0000-0000-000000000053', '11111111-0000-0000-0000-000000000005', '22222222-0000-0000-0000-000000000003', TRUE, TRUE, NULL, @now, @now);
 
 -- ---------------------------------------------------------------------
 -- SYSTEM LISTS (catalogos configurables)
@@ -547,7 +557,8 @@ INSERT INTO constant (Id, Code, Name, Value, Description, Enabled, Visible, Audi
     ('66666666-0000-0000-0000-000000000001', 'MAYORIA_EDAD',        'Mayoria de edad',                  '18',  'Edad minima para ser mayor de edad',                              TRUE, TRUE, NULL, @now, @now),
     ('66666666-0000-0000-0000-000000000002', 'MAX_LOGIN_ATTEMPTS',  'Maximo intentos de login',         '5',   'Cantidad maxima de intentos fallidos antes de bloquear cuenta',   TRUE, TRUE, NULL, @now, @now),
     ('66666666-0000-0000-0000-000000000003', 'SESION_TIMEOUT_MIN',  'Timeout de sesion (minutos)',      '60',  'Tiempo de inactividad antes de cerrar sesion automaticamente',    TRUE, TRUE, NULL, @now, @now),
-    ('66666666-0000-0000-0000-000000000004', 'PROFILE_PHOTO_MAX_KB', 'Tamano maximo foto de perfil (KB)', '512', 'Limite de tamano para subir foto de perfil de usuario',           TRUE, TRUE, NULL, @now, @now);
+    ('66666666-0000-0000-0000-000000000004', 'PROFILE_PHOTO_MAX_KB', 'Tamano maximo foto de perfil (KB)', '512', 'Limite de tamano para subir foto de perfil de usuario',           TRUE, TRUE, NULL, @now, @now),
+    ('66666666-0000-0000-0000-000000000005', 'VERAPP',              'Version vigente del APK',          '1.0.0', 'Si la version instalada difiere, el APK exige actualizar',        TRUE, TRUE, NULL, @now, @now);
 
 -- ---------------------------------------------------------------------
 -- MENUS (estructura jerarquica configurable)
@@ -582,6 +593,7 @@ INSERT INTO menu (
 ('77770002-0000-0000-0000-000000000023', 'ADMIN_MENUS', 'Menus', 'menu', '/admin/menus', '77770001-0000-0000-0000-000000000020', 3, TRUE, TRUE, NULL, @now, @now),
 ('77770002-0000-0000-0000-000000000024', 'ADMIN_POLITICAL_DIVISION', 'Division politica', 'map', '/admin/political-division', '77770001-0000-0000-0000-000000000020', 4, TRUE, TRUE, NULL, @now, @now),
 ('77770002-0000-0000-0000-000000000025', 'ADMIN_SYSTEM_STATUS', 'Estado del sistema', 'server', '/admin/system-status', '77770001-0000-0000-0000-000000000020', 5, TRUE, TRUE, NULL, @now, @now),
+('77770002-0000-0000-0000-000000000026', 'ADMIN_APP_VERSIONS', 'Versiones del APK', 'smartphone', '/admin/app-versions', '77770001-0000-0000-0000-000000000020', 6, TRUE, TRUE, NULL, @now, @now),
 
 ('77770001-0000-0000-0000-000000000030', 'ADMIN_SECURITY_GROUP', 'Seguridad', 'shield', NULL, NULL, 6, TRUE, TRUE, NULL, @now, @now),
 ('77770002-0000-0000-0000-000000000031', 'ADMIN_ROLES', 'Roles', 'shield', '/admin/roles', '77770001-0000-0000-0000-000000000030', 1, TRUE, TRUE, NULL, @now, @now),
@@ -612,6 +624,39 @@ WHERE (m.Id LIKE '77770001-0000-%' OR m.Id LIKE '77770002-0000-%')
     SELECT 1 FROM menu_role mr
     WHERE mr.MenuId = m.Id
       AND mr.RoleId = '11111111-0000-0000-0000-000000000001'
+);
+
+-- ===================== [menus tenant - OWNER] =====================
+-- Menus del dueño (rol OWNER). Apuntan a rutas /tenant/* (área separada de /admin).
+-- El sidebar del dueño se nutre de estos via /menus/me (config por rol).
+INSERT INTO menu (Id, Code, Name, Icon, Route, ParentId, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
+('77771001-0000-0000-0000-000000000001', 'TENANT_DASHBOARD',  'Panel',            'activity',   '/tenant/dashboard',  NULL, 1, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000002', 'TENANT_BUSINESS',   'Mi negocio',       'building-2', '/tenant/mi-negocio', NULL, 2, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000005', 'TENANT_SERVICES',   'Servicios',        'scissors',   '/tenant/servicios',  NULL, 3, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000006', 'TENANT_BRANCHES',   'Sedes',            'map-pin',    '/tenant/sedes',      NULL, 4, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000007', 'TENANT_EMPLOYEES',  'Empleados',        'users',      '/tenant/empleados',  NULL, 5, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000003', 'TENANT_PROFILE',    'Mi perfil',        'user',       '/tenant/profile',    NULL, 9, TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000004', 'TENANT_ONBOARDING', 'Crear mi negocio', 'plus',       '/tenant/onboarding', NULL, 8, TRUE, TRUE, NULL, @now, @now);
+
+INSERT INTO menu_role (Id, MenuId, RoleId, Enabled, Visible, AuditUser, AuditDate, CreatedDate)
+SELECT UUID(), m.Id, '11111111-0000-0000-0000-000000000004', TRUE, TRUE, NULL, @now, @now
+FROM menu m
+WHERE m.Id LIKE '77771001-0000-%'
+  AND NOT EXISTS (
+    SELECT 1 FROM menu_role mr
+    WHERE mr.MenuId = m.Id
+      AND mr.RoleId = '11111111-0000-0000-0000-000000000004'
+);
+
+-- EMPLOYEE: solo Panel y Mi perfil (opera desde el APK; el resto es del dueño).
+INSERT INTO menu_role (Id, MenuId, RoleId, Enabled, Visible, AuditUser, AuditDate, CreatedDate)
+SELECT UUID(), m.Id, '11111111-0000-0000-0000-000000000005', TRUE, TRUE, NULL, @now, @now
+FROM menu m
+WHERE m.Id IN ('77771001-0000-0000-0000-000000000001', '77771001-0000-0000-0000-000000000003')
+  AND NOT EXISTS (
+    SELECT 1 FROM menu_role mr
+    WHERE mr.MenuId = m.Id
+      AND mr.RoleId = '11111111-0000-0000-0000-000000000005'
 );
 
 -- ---------------------------------------------------------------------
@@ -835,6 +880,19 @@ INSERT INTO shift_type (Id, Code, Name, Value, DisplayOrder, Enabled, Visible, A
 INSERT INTO schedule_type (Id, Code, Name, Value, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
  ('61000000-0000-0000-0000-000000000001','CONTINUOUS','Continuo','CONTINUOUS',1,TRUE,TRUE,NULL,@now,@now),
  ('61000000-0000-0000-0000-000000000002','DISCONTINUOUS','Discontinuo','DISCONTINUOUS',2,TRUE,TRUE,NULL,@now,@now);
+-- Tipos de negocio y de sede: sin items el dueño no puede crear su negocio
+-- ni sus sedes (selects vacios en onboarding/sedes).
+INSERT INTO business_type (Id, Code, Name, Value, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
+ ('65000000-0000-0000-0000-000000000001','BARBERSHOP','Barberia',NULL,1,TRUE,TRUE,NULL,@now,@now),
+ ('65000000-0000-0000-0000-000000000002','SALON','Salon de belleza',NULL,2,TRUE,TRUE,NULL,@now,@now),
+ ('65000000-0000-0000-0000-000000000003','SPA','Spa',NULL,3,TRUE,TRUE,NULL,@now,@now),
+ ('65000000-0000-0000-0000-000000000004','NAILS','Estudio de unas',NULL,4,TRUE,TRUE,NULL,@now,@now);
+
+INSERT INTO branch_type (Id, Code, Name, Value, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
+ ('66000000-0000-0000-0000-000000000001','MAIN','Principal',NULL,1,TRUE,TRUE,NULL,@now,@now),
+ ('66000000-0000-0000-0000-000000000002','BRANCH','Sucursal',NULL,2,TRUE,TRUE,NULL,@now,@now),
+ ('66000000-0000-0000-0000-000000000003','KIOSK','Punto satelite',NULL,3,TRUE,TRUE,NULL,@now,@now);
+
 INSERT INTO employee_position (Id, Code, Name, Value, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
  ('62000000-0000-0000-0000-000000000001','BARBER','Barbero','BARBER',1,TRUE,TRUE,NULL,@now,@now),
  ('62000000-0000-0000-0000-000000000002','STYLIST','Estilista','STYLIST',2,TRUE,TRUE,NULL,@now,@now),
@@ -862,6 +920,34 @@ INSERT INTO day_of_week (Id, Code, Name, Value, DisplayOrder, Enabled, Visible, 
  ('64000000-0000-0000-0000-000000000005','FRI','Viernes','5',5,TRUE,TRUE,NULL,@now,@now),
  ('64000000-0000-0000-0000-000000000006','SAT','Sabado','6',6,TRUE,TRUE,NULL,@now,@now),
  ('64000000-0000-0000-0000-000000000007','SUN','Domingo','7',7,TRUE,TRUE,NULL,@now,@now);
+
+-- ---------------------------------------------------------------------
+-- Distribucion del APK: historico de versiones subidas por el admin.
+-- El binario vive en disco (system-service, app.apk.storage-dir); aqui la
+-- metadata + checksum. Solo UNA version IsCurrent (la publicada/vigente);
+-- publicar sincroniza la constante VERAPP. VersionCode es el androide
+-- (creciente obligatorio para que el telefono actualice en sitio sin
+-- perder la data local).
+-- ---------------------------------------------------------------------
+CREATE TABLE app_version (
+    Id          CHAR(36)     NOT NULL,
+    Version     VARCHAR(20)  NOT NULL,
+    VersionCode INT          NOT NULL,
+    FileName    VARCHAR(160) NOT NULL,
+    Checksum    VARCHAR(64)  NOT NULL,
+    SizeBytes   BIGINT       NOT NULL,
+    Notes       VARCHAR(500) NULL,
+    IsCurrent   BOOLEAN      NOT NULL DEFAULT FALSE,
+    Enabled     BOOLEAN      NOT NULL DEFAULT TRUE,
+    Visible     BOOLEAN      NOT NULL DEFAULT TRUE,
+    CreatedBy   CHAR(36)     NULL,
+    AuditUser   CHAR(36)     NULL,
+    AuditDate   DATETIME(6)  NOT NULL,
+    CreatedDate DATETIME(6)  NOT NULL,
+    PRIMARY KEY (Id),
+    UNIQUE KEY uq_app_version_version (Version),
+    UNIQUE KEY uq_app_version_code (VersionCode)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
 -- FASE B: permiso de reindexado de terceros (asignado a ADMIN)

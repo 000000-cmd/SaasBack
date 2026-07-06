@@ -42,6 +42,7 @@ public class ThirdPartyService extends GenericCrudService<ThirdParty, UUID>
         if (incoming.getGenderId() != null)        existing.setGenderId(incoming.getGenderId());
         if (incoming.getBirthDate() != null)       existing.setBirthDate(incoming.getBirthDate());
         if (incoming.getPhotoUrl() != null)        existing.setPhotoUrl(incoming.getPhotoUrl());
+        if (incoming.getBiometricEnabled() != null) existing.setBiometricEnabled(incoming.getBiometricEnabled());
     }
 
     @Override
@@ -49,6 +50,9 @@ public class ThirdPartyService extends GenericCrudService<ThirdParty, UUID>
         if (thirdPartyRepo.existsByDocument(entity.getDocumentTypeId(), entity.getDocumentNumber())) {
             throw new DuplicateResourceException(getResourceName(), "documentNumber", entity.getDocumentNumber());
         }
+        // Columna NOT NULL: el mapper copia null del request y pisaria el
+        // default de la entidad (mismo patron que IsPrimary/IsVerified en hijos).
+        if (entity.getBiometricEnabled() == null) entity.setBiometricEnabled(false);
     }
 
     @Override @Transactional(readOnly = true)
@@ -59,6 +63,16 @@ public class ThirdPartyService extends GenericCrudService<ThirdParty, UUID>
     @Override @Transactional(readOnly = true)
     public boolean existsByDocument(UUID documentTypeId, String documentNumber) {
         return thirdPartyRepo.existsByDocument(documentTypeId, documentNumber);
+    }
+
+    @Override @Transactional(readOnly = true)
+    public Optional<ThirdParty> findByUserId(UUID userId) {
+        return thirdPartyRepo.findByUserId(userId);
+    }
+
+    @Override @Transactional(readOnly = true)
+    public java.util.List<ThirdParty> findByIds(java.util.Collection<UUID> ids) {
+        return thirdPartyRepo.findByIds(ids);
     }
 
     @Override protected void onAfterCreate(ThirdParty saved) { reindexPublisher.publishUpsert(saved.getId(), true); }
