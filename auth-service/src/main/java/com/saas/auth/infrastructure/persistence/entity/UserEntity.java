@@ -55,4 +55,8 @@ public class UserEntity extends BaseEntity {
 
     @Column(name = "LastLoginAt")
     private LocalDateTime lastLoginAt;
+
+    /** TRUE hasta que el usuario ve el modal de bienvenida por primera vez. */
+    @Column(name = "IsFirstLogin", nullable = false)
+    private Boolean isFirstLogin;
 }

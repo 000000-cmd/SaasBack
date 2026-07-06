@@ -4,6 +4,8 @@ import com.saas.common.events.EventTypes;
 import com.saas.common.outbox.OutboxPublisher;
 import com.saas.thirdparty.application.dto.event.ThirdPartyEventPayload;
 import com.saas.thirdparty.domain.model.ThirdParty;
+import com.saas.thirdparty.domain.port.out.IThirdPartyAddressRepositoryPort;
+import com.saas.thirdparty.domain.port.out.IThirdPartyContactRepositoryPort;
 import com.saas.thirdparty.domain.port.out.IThirdPartyRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -12,10 +14,11 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Publica el evento de tercero para que search-service indexe el read model de
- * LISTADO/BUSQUEDA. El payload es plano (documento, nombre, estado, Ids de filtro);
- * el detalle (contactos/direcciones/catalogos) no se indexa. Lo usan el servicio de
- * terceros y los de contactos/direcciones para refrescar el documento del padre.
+ * Publica el evento de tercero para que search-service indexe el read model.
+ * El payload es COMPLETO (base + contactos + direcciones): el documento en ES
+ * queda igual que {@code /full} de la BD, de modo que el comparador de reindex
+ * confronta ES-full vs BD-full. Lo usan el servicio de terceros y los de
+ * contactos/direcciones para refrescar el documento del padre.
  */
 @Component
 @RequiredArgsConstructor
@@ -24,14 +27,16 @@ public class ThirdPartyReindexPublisher {
     private static final String AGGREGATE_TYPE = "thirdparty";
 
     private final IThirdPartyRepositoryPort thirdPartyRepo;
+    private final IThirdPartyContactRepositoryPort contactRepo;
+    private final IThirdPartyAddressRepositoryPort addressRepo;
     private final OutboxPublisher outboxPublisher;
 
-    /** Publica el tercero. {@code created=true} en alta. */
+    /** Publica el tercero completo. {@code created=true} en alta. */
     public void publishUpsert(UUID thirdPartyId, boolean created) {
         thirdPartyRepo.findById(thirdPartyId).ifPresent(tp ->
                 outboxPublisher.publish(
                         created ? EventTypes.THIRDPARTY_CREATED : EventTypes.THIRDPARTY_UPDATED,
-                        null, AGGREGATE_TYPE, thirdPartyId, ThirdPartyEventPayload.from(tp)));
+                        null, AGGREGATE_TYPE, thirdPartyId, buildPayload(tp)));
     }
 
     /** Re-indexa el tercero tras un cambio en un hijo (contacto/direccion). */
@@ -44,8 +49,15 @@ public class ThirdPartyReindexPublisher {
                 thirdPartyId, ThirdPartyEventPayload.from(snapshot));
     }
 
-    /** Construye los payloads de una página (para reindex-from-source). */
+    /** Construye los payloads COMPLETOS de una página (para reindex-from-source). */
     public List<ThirdPartyEventPayload> buildPage(int page, int size) {
-        return thirdPartyRepo.findAllPaged(page, size).stream().map(ThirdPartyEventPayload::from).toList();
+        return thirdPartyRepo.findAllPaged(page, size).stream().map(this::buildPayload).toList();
+    }
+
+    /** Documento completo del tercero: base + sus contactos + sus direcciones. */
+    private ThirdPartyEventPayload buildPayload(ThirdParty tp) {
+        return ThirdPartyEventPayload.from(tp,
+                contactRepo.findByThirdPartyId(tp.getId()),
+                addressRepo.findByThirdPartyId(tp.getId()));
     }
 }

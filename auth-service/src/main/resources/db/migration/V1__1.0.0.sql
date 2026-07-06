@@ -37,6 +37,8 @@ CREATE TABLE app_user (
     Theme           VARCHAR(30)  NOT NULL DEFAULT 'light',
     LanguageCode    VARCHAR(10)  NOT NULL DEFAULT 'es-CO',
     LastLoginAt     DATETIME(6)  NULL,
+    -- TRUE hasta que el tercero ve el modal de bienvenida por primera vez.
+    IsFirstLogin    BOOLEAN      NOT NULL DEFAULT TRUE,
     Enabled         BOOLEAN      NOT NULL DEFAULT TRUE,
     Visible         BOOLEAN      NOT NULL DEFAULT TRUE,
     CreatedBy CHAR(36) NULL,

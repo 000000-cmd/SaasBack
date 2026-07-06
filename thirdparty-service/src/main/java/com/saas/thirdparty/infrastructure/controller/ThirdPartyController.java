@@ -57,6 +57,10 @@ public class ThirdPartyController {
         return ResponseEntity.ok(ApiResponse.success(detail));
     }
 
+    // Sin /index-preview: el documento en ES ya es COMPLETO (base + contactos +
+    // direcciones), asi que el comparador confronta directamente ES (searchDoc)
+    // vs BD (/full). No se necesita una "proyeccion" aparte.
+
     /** Reindexa el tercero (read-model de busqueda) en Elasticsearch. */
     @PostMapping("/{id}/reindex")
     @PreAuthorize("hasRole('ADMIN')")

@@ -5,14 +5,17 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.data.elasticsearch.annotations.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
- * Read model de Terceros (persona natural) para LISTADO/BUSQUEDA.
+ * Read model de Terceros (persona natural).
  *
- * <p>Solo lleva lo que la lista muestra/busca: documento, nombre y estado, mas
- * los Ids que sirven de filtro. El detalle completo (contactos, direcciones,
- * nombres de catalogos) se obtiene de la BD via {@code /full}; ES no los duplica.</p>
+ * <p>Los campos planos (documento, nombre, estado, Ids de filtro) sirven al
+ * LISTADO/BUSQUEDA. Ademas guarda el detalle anidado (contactos + direcciones)
+ * en el {@code _source} —no indexado (mapping {@code enabled:false})— para que
+ * el documento sea equivalente a {@code /full} de la BD y el comparador de
+ * reindex confronte ES-full vs BD-full.</p>
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -48,4 +51,34 @@ public class ThirdPartyDocument extends BaseDocument {
 
     @Field(type = FieldType.Boolean)
     private Boolean enabled;
+
+    /** Detalle anidado: en _source, no indexado (ver mapping). */
+    @Field(type = FieldType.Object, enabled = false)
+    private List<Contact> contacts;
+
+    @Field(type = FieldType.Object, enabled = false)
+    private List<Address> addresses;
+
+    @Data
+    public static class Contact {
+        private UUID id;
+        private UUID contactTypeId;
+        private String value;
+        private Boolean isPrimary;
+        private Boolean isVerified;
+        private String notes;
+        private Boolean enabled;
+    }
+
+    @Data
+    public static class Address {
+        private UUID id;
+        private UUID addressTypeId;
+        private UUID municipalityId;
+        private UUID neighborhoodId;
+        private String line;
+        private String reference;
+        private Boolean isPrimary;
+        private Boolean enabled;
+    }
 }

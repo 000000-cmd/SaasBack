@@ -31,7 +31,9 @@
       "firstName":      { "type": "text", "analyzer": "spanish_text" },
       "firstLastName":  { "type": "text", "analyzer": "spanish_text" },
       "genderId":       { "type": "keyword" },
-      "enabled":        { "type": "boolean" }
+      "enabled":        { "type": "boolean" },
+      "contacts":       { "type": "object", "enabled": false },
+      "addresses":      { "type": "object", "enabled": false }
     }
   }
 }

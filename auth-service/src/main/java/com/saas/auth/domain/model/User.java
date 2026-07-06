@@ -41,6 +41,8 @@ public class User extends BaseDomain {
     private String theme;
     private String languageCode;
     private LocalDateTime lastLoginAt;
+    /** TRUE hasta que ve el modal de bienvenida (primer ingreso). */
+    private Boolean isFirstLogin;
 
     /** Solo en memoria; no se persiste en app_user. */
     @Builder.Default

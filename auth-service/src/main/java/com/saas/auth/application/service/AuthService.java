@@ -94,8 +94,7 @@ public class AuthService implements IAuthUseCase {
         // 2) Asignar el rol OWNER (id fijo sembrado).
         userUseCase.assignRoles(created.getId(), Set.of(OWNER_ROLE_ID));
 
-        log.info("Registro de dueño: userId={} username={} negocio='{}' slug='{}'",
-                created.getId(), created.getUsername(), request.businessName(), request.slug());
+        log.info("Registro de dueño: userId={} username={}", created.getId(), created.getUsername());
 
         // 3) Devolver la sesión iniciada (mismos tokens que el login).
         return login(new LoginRequest(request.email(), request.password()));
@@ -159,7 +158,7 @@ public class AuthService implements IAuthUseCase {
         return new UserResponse(
                 base.id(), base.username(), base.email(), base.firstName(), base.lastName(),
                 base.fullName(), base.profilePhoto(), base.theme(), base.languageCode(),
-                base.lastLoginAt(), base.enabled(), base.visible(),
+                base.lastLoginAt(), base.isFirstLogin(), base.enabled(), base.visible(),
                 user.getRoleCodes(),
                 base.createdDate()
         );
