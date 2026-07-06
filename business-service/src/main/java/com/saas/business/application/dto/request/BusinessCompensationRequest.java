@@ -5,8 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-public record EmployeeCompensationRequest(
-        @NotNull UUID employeeId,
+public record BusinessCompensationRequest(
+        @NotNull UUID businessId,
         @NotBlank String compensationType,
         @NotNull BigDecimal compensationValue
 ) {}

@@ -40,6 +40,9 @@ public class RouteConfig {
     @Value("${saas.gateway.services.thirdparty-uri:lb://thirdparty-service}")
     private String thirdpartyUri;
 
+    @Value("${saas.gateway.services.finance-uri:lb://finance-service}")
+    private String financeUri;
+
     @Bean("loginRateLimiter")
     public RedisRateLimiter loginRateLimiter(
             @Value("${saas.gateway.rate-limit.login.replenish-rate:2}") int replenish,
@@ -111,6 +114,12 @@ public class RouteConfig {
                                 .setRateLimiter(defaultRateLimiter)
                                 .setKeyResolver(userKeyResolver)))
                         .uri(thirdpartyUri))
+                .route("finance", r -> r
+                        .path("/finance/**")
+                        .filters(f -> f.requestRateLimiter(c -> c
+                                .setRateLimiter(defaultRateLimiter)
+                                .setKeyResolver(userKeyResolver)))
+                        .uri(financeUri))
                 .build();
     }
 }

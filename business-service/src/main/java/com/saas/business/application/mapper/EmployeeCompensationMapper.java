@@ -1,7 +1,9 @@
 package com.saas.business.application.mapper;
 
 import com.saas.business.application.dto.request.EmployeeCompensationRequest;
+import com.saas.business.application.dto.response.EffectiveCompensationResponse;
 import com.saas.business.application.dto.response.EmployeeCompensationResponse;
+import com.saas.business.domain.model.EffectiveCompensation;
 import com.saas.business.domain.model.EmployeeCompensation;
 import com.saas.common.mapper.BaseMapStructConfig;
 import org.mapstruct.*;
@@ -17,4 +19,7 @@ public interface EmployeeCompensationMapper {
     EmployeeCompensation toDomain(EmployeeCompensationRequest request);
     EmployeeCompensationResponse toResponse(EmployeeCompensation domain);
     List<EmployeeCompensationResponse> toResponseList(List<EmployeeCompensation> domains);
+
+    /** El enum {@code source} se serializa a String por su name() (EMPLOYEE|BRANCH|BUSINESS). */
+    EffectiveCompensationResponse toEffectiveResponse(EffectiveCompensation domain);
 }

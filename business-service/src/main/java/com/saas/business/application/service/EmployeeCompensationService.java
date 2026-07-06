@@ -24,9 +24,7 @@ public class EmployeeCompensationService extends GenericCrudService<EmployeeComp
     }
     @Override protected void applyChanges(EmployeeCompensation e, EmployeeCompensation i) {
         if (i.getCompensationType() != null) e.setCompensationType(i.getCompensationType());
-        if (i.getBaseSalary() != null) e.setBaseSalary(i.getBaseSalary());
-        if (i.getServicePercentage() != null) e.setServicePercentage(i.getServicePercentage());
-        if (i.getFixedCommission() != null) e.setFixedCommission(i.getFixedCommission());
+        if (i.getCompensationValue() != null) e.setCompensationValue(i.getCompensationValue());
     }
 
     @Override @Transactional

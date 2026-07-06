@@ -865,8 +865,30 @@ CREATE TABLE employee_shift_assignment (
     CONSTRAINT fk_esa_status FOREIGN KEY (StatusId) REFERENCES status (Id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------------------------------------------------------------
+-- Compensacion jerarquica en 3 niveles: business (general) -> branch (sede)
+-- -> employee (individual). Cada nivel guarda su propia configuracion
+-- versionada (ValidFrom/ValidTo; vigente = ValidTo IS NULL). La resolucion
+-- efectiva escala de abajo hacia arriba: si el empleado no tiene config
+-- vigente toma la de su sede, y si la sede no tiene, la del negocio.
+-- Misma forma en los 3: (Type, Value) condicionado por Type.
+-- ---------------------------------------------------------------------
+CREATE TABLE business_compensation (
+    Id CHAR(36) NOT NULL, BusinessId CHAR(36) NOT NULL, CompensationType VARCHAR(40) NOT NULL, CompensationValue DECIMAL(12,2) NOT NULL, ValidFrom DATETIME(6) NOT NULL, ValidTo DATETIME(6) NULL,
+    Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE, CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
+    PRIMARY KEY (Id), KEY idx_bizcomp_business (BusinessId),
+    CONSTRAINT fk_bizcomp_business FOREIGN KEY (BusinessId) REFERENCES business (Id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE branch_compensation (
+    Id CHAR(36) NOT NULL, BranchId CHAR(36) NOT NULL, CompensationType VARCHAR(40) NOT NULL, CompensationValue DECIMAL(12,2) NOT NULL, ValidFrom DATETIME(6) NOT NULL, ValidTo DATETIME(6) NULL,
+    Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE, CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
+    PRIMARY KEY (Id), KEY idx_brcomp_branch (BranchId),
+    CONSTRAINT fk_brcomp_branch FOREIGN KEY (BranchId) REFERENCES branch (Id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE employee_compensation (
-    Id CHAR(36) NOT NULL, EmployeeId CHAR(36) NOT NULL, CompensationType VARCHAR(40) NOT NULL, BaseSalary DECIMAL(12,2) NULL, ServicePercentage DECIMAL(5,2) NULL, FixedCommission DECIMAL(12,2) NULL, ValidFrom DATETIME(6) NOT NULL, ValidTo DATETIME(6) NULL,
+    Id CHAR(36) NOT NULL, EmployeeId CHAR(36) NOT NULL, CompensationType VARCHAR(40) NOT NULL, CompensationValue DECIMAL(12,2) NOT NULL, ValidFrom DATETIME(6) NOT NULL, ValidTo DATETIME(6) NULL,
     Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE, CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
     PRIMARY KEY (Id), KEY idx_ec_employee (EmployeeId),
     CONSTRAINT fk_ec_employee FOREIGN KEY (EmployeeId) REFERENCES employee (Id)

@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public record EmployeeCompensationResponse(
-        UUID id, UUID employeeId, String compensationType, BigDecimal compensationValue,
+public record BusinessCompensationResponse(
+        UUID id, UUID businessId, String compensationType, BigDecimal compensationValue,
         LocalDateTime validFrom, LocalDateTime validTo, Boolean enabled
 ) {}
