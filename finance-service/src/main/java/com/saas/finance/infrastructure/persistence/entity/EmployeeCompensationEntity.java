@@ -1,4 +1,4 @@
-package com.saas.business.infrastructure.persistence.entity;
+package com.saas.finance.infrastructure.persistence.entity;
 
 import com.saas.common.persistence.BaseEntity;
 import jakarta.persistence.*;
@@ -17,9 +17,7 @@ public class EmployeeCompensationEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.CHAR) @Column(name = "EmployeeId", length = 36, nullable = false)
     private UUID employeeId;
     @Column(name = "CompensationType", length = 40, nullable = false) private String compensationType;
-    @Column(name = "BaseSalary", precision = 12, scale = 2) private BigDecimal baseSalary;
-    @Column(name = "ServicePercentage", precision = 5, scale = 2) private BigDecimal servicePercentage;
-    @Column(name = "FixedCommission", precision = 12, scale = 2) private BigDecimal fixedCommission;
+    @Column(name = "CompensationValue", precision = 12, scale = 2, nullable = false) private BigDecimal compensationValue;
     @Column(name = "ValidFrom", nullable = false) private LocalDateTime validFrom;
     @Column(name = "ValidTo") private LocalDateTime validTo;
 }

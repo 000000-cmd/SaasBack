@@ -1,6 +1,6 @@
-package com.saas.business.domain.port.out;
+package com.saas.finance.domain.port.out;
 
-import com.saas.business.domain.model.EmployeeCompensation;
+import com.saas.finance.domain.model.EmployeeCompensation;
 import com.saas.common.port.out.IGenericRepositoryPort;
 import java.util.List;
 import java.util.UUID;

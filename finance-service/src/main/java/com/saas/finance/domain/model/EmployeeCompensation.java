@@ -1,4 +1,4 @@
-package com.saas.business.domain.model;
+package com.saas.finance.domain.model;
 
 import com.saas.common.model.BaseDomain;
 import lombok.*;
@@ -12,9 +12,8 @@ import java.util.UUID;
 public class EmployeeCompensation extends BaseDomain {
     private UUID employeeId;
     private String compensationType; // SALARY_ONLY|SALARY_PLUS_COMMISSION|SALARY_PLUS_SERVICE_PERCENT|SERVICE_PERCENT_ONLY
-    private BigDecimal baseSalary;
-    private BigDecimal servicePercentage;
-    private BigDecimal fixedCommission;
+    // Valor unico condicionado por compensationType (monto fijo o porcentaje segun el tipo).
+    private BigDecimal compensationValue;
     private LocalDateTime validFrom;
     private LocalDateTime validTo;
 }

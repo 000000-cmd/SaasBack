@@ -1,10 +1,10 @@
-package com.saas.business.infrastructure.persistence.adapter;
+package com.saas.finance.infrastructure.persistence.adapter;
 
-import com.saas.business.domain.model.EmployeeCompensation;
-import com.saas.business.domain.port.out.IEmployeeCompensationRepositoryPort;
-import com.saas.business.infrastructure.persistence.entity.EmployeeCompensationEntity;
-import com.saas.business.infrastructure.persistence.mapper.EmployeeCompensationPersistenceMapper;
-import com.saas.business.infrastructure.persistence.repository.JpaEmployeeCompensationRepository;
+import com.saas.finance.domain.model.EmployeeCompensation;
+import com.saas.finance.domain.port.out.IEmployeeCompensationRepositoryPort;
+import com.saas.finance.infrastructure.persistence.entity.EmployeeCompensationEntity;
+import com.saas.finance.infrastructure.persistence.mapper.EmployeeCompensationPersistenceMapper;
+import com.saas.finance.infrastructure.persistence.repository.JpaEmployeeCompensationRepository;
 import com.saas.common.persistence.BaseJpaRepositoryAdapter;
 import org.springframework.stereotype.Repository;
 import java.util.List;

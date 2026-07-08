@@ -1,6 +1,6 @@
-package com.saas.business.infrastructure.persistence.repository;
+package com.saas.finance.infrastructure.persistence.repository;
 
-import com.saas.business.infrastructure.persistence.entity.EmployeeCompensationEntity;
+import com.saas.finance.infrastructure.persistence.entity.EmployeeCompensationEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;

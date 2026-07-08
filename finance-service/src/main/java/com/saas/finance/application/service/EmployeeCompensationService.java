@@ -1,8 +1,8 @@
-package com.saas.business.application.service;
+package com.saas.finance.application.service;
 
-import com.saas.business.domain.model.EmployeeCompensation;
-import com.saas.business.domain.port.in.IEmployeeCompensationUseCase;
-import com.saas.business.domain.port.out.IEmployeeCompensationRepositoryPort;
+import com.saas.finance.domain.model.EmployeeCompensation;
+import com.saas.finance.domain.port.in.IEmployeeCompensationUseCase;
+import com.saas.finance.domain.port.out.IEmployeeCompensationRepositoryPort;
 import com.saas.common.service.GenericCrudService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,9 +24,7 @@ public class EmployeeCompensationService extends GenericCrudService<EmployeeComp
     }
     @Override protected void applyChanges(EmployeeCompensation e, EmployeeCompensation i) {
         if (i.getCompensationType() != null) e.setCompensationType(i.getCompensationType());
-        if (i.getBaseSalary() != null) e.setBaseSalary(i.getBaseSalary());
-        if (i.getServicePercentage() != null) e.setServicePercentage(i.getServicePercentage());
-        if (i.getFixedCommission() != null) e.setFixedCommission(i.getFixedCommission());
+        if (i.getCompensationValue() != null) e.setCompensationValue(i.getCompensationValue());
     }
 
     @Override @Transactional

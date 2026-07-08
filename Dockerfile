@@ -21,6 +21,7 @@ COPY search-service/pom.xml search-service/
 COPY business-service/pom.xml business-service/
 COPY audit-service/pom.xml audit-service/
 COPY thirdparty-service/pom.xml thirdparty-service/
+COPY finance-service/pom.xml finance-service/
 
 RUN mvn dependency:go-offline -B -q || true
 
@@ -46,6 +47,7 @@ COPY search-service/ search-service/
 COPY business-service/ business-service/
 COPY audit-service/ audit-service/
 COPY thirdparty-service/ thirdparty-service/
+COPY finance-service/ finance-service/
 
 RUN echo "=== Compilando TODOS los servicios ===" && \
     mvn clean package -DskipTests -B && \
@@ -174,4 +176,16 @@ EXPOSE 8086
 ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8086/business/actuator/health || exit 1
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+
+# ===========================================
+# STAGE 13: FINANCE SERVICE
+# ===========================================
+FROM base-runtime AS finance-service
+COPY --from=builder --chown=appuser:appgroup /app/finance-service/target/*.jar app.jar
+USER appuser
+EXPOSE 8088
+ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8088/finance/actuator/health || exit 1
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

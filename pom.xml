@@ -31,6 +31,7 @@
         <module>business-service</module>
         <module>audit-service</module>
         <module>thirdparty-service</module>
+        <module>finance-service</module>
     </modules>
 
     <properties>

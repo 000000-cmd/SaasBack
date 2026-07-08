@@ -1,6 +1,6 @@
-package com.saas.business.domain.port.in;
+package com.saas.finance.domain.port.in;
 
-import com.saas.business.domain.model.EmployeeCompensation;
+import com.saas.finance.domain.model.EmployeeCompensation;
 import com.saas.common.port.in.IGenericUseCase;
 import java.util.List;
 import java.util.Optional;
