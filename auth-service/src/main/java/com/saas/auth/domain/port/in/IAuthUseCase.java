@@ -15,6 +15,12 @@ public interface IAuthUseCase {
      */
     LoginResponse registerOwner(RegisterOwnerRequest request);
 
+    /**
+     * ¿El correo ya está registrado? Público, para validar disponibilidad en el
+     * primer paso del registro antes de enviar (solo lectura).
+     */
+    boolean emailExists(String email);
+
     TokenPairResponse refresh(String refreshToken);
 
     /** Revoca el refresh token y publica el access token en blacklist (Redis). */
