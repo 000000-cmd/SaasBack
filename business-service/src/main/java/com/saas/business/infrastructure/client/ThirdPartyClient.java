@@ -3,6 +3,7 @@ package com.saas.business.infrastructure.client;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -23,6 +24,10 @@ public interface ThirdPartyClient {
 
     @PostMapping("/internal/third-parties")
     PersonResponse createPerson(@RequestBody CreatePersonRequest request);
+
+    /** Actualiza la persona existente (cuando el usuario ya tenía tercero). */
+    @PutMapping("/internal/third-parties/{id}")
+    PersonResponse updatePerson(@PathVariable("id") UUID id, @RequestBody CreatePersonRequest request);
 
     /** Resuelve la persona vinculada a una cuenta. Lanza 404 (FeignException) si no existe. */
     @GetMapping("/internal/third-parties/by-user/{userId}")

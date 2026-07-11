@@ -9,12 +9,14 @@ import com.saas.business.domain.port.in.IBusinessDomainUseCase;
 import com.saas.business.domain.port.in.IBusinessOwnerUseCase;
 import com.saas.business.domain.port.in.IBusinessUseCase;
 import com.saas.business.infrastructure.client.ThirdPartyClient;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Orquesta el alta de un negocio: empresa + slug (local), persona del dueño
@@ -55,19 +57,36 @@ public class ProvisioningService {
                 .isPrimary(true)
                 .build());
 
-        ThirdPartyClient.PersonResponse person = thirdPartyClient.createPerson(
-                new ThirdPartyClient.CreatePersonRequest(
-                        r.ownerDocumentTypeId(), r.ownerDocumentNumber(), r.ownerUserId(), business.getId(),
-                        r.ownerFirstName(), r.ownerSecondName(), r.ownerFirstLastName(), r.ownerSecondLastName(),
-                        r.ownerGenderId(), r.ownerBirthDate(), null));
+        // Regla: UN solo tercero por usuario. Si el usuario ya tiene persona,
+        // se ACTUALIZA (PUT); si no, se crea. Así una re-provisión no genera
+        // terceros duplicados (que rompían el endpoint by-user).
+        ThirdPartyClient.CreatePersonRequest personReq = new ThirdPartyClient.CreatePersonRequest(
+                r.ownerDocumentTypeId(), r.ownerDocumentNumber(), r.ownerUserId(), business.getId(),
+                r.ownerFirstName(), r.ownerSecondName(), r.ownerFirstLastName(), r.ownerSecondLastName(),
+                r.ownerGenderId(), r.ownerBirthDate(), null);
+
+        ThirdPartyClient.PersonResponse existing = findPersonByUser(r.ownerUserId());
+        UUID personId = (existing != null)
+                ? thirdPartyClient.updatePerson(existing.id(), personReq).id()
+                : thirdPartyClient.createPerson(personReq).id();
 
         BusinessOwner owner = ownerUseCase.create(BusinessOwner.builder()
                 .businessId(business.getId())
-                .thirdPartyId(person.id())
+                .thirdPartyId(personId)
                 .ownershipPercentage(new BigDecimal("100"))
                 .startDate(LocalDate.now())
                 .build());
 
-        return new ProvisionResponse(business.getId(), domain.getSlug(), person.id(), owner.getId());
+        return new ProvisionResponse(business.getId(), domain.getSlug(), personId, owner.getId());
+    }
+
+    /** Persona del usuario si ya existe (null si 404 o si no hay usuario). */
+    private ThirdPartyClient.PersonResponse findPersonByUser(UUID userId) {
+        if (userId == null) return null;
+        try {
+            return thirdPartyClient.personByUser(userId);
+        } catch (FeignException.NotFound e) {
+            return null;
+        }
     }
 }

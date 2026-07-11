@@ -52,6 +52,15 @@ public class InternalController {
         return mapper.toResponse(useCase.create(mapper.toDomain(req)));
     }
 
+    /**
+     * Actualización S2S de una persona (el aprovisionamiento hace PUT cuando el
+     * usuario ya tiene tercero, en vez de crear otro).
+     */
+    @PutMapping("/third-parties/{id}")
+    public ThirdPartyResponse update(@PathVariable UUID id, @Valid @RequestBody ThirdPartyRequest req) {
+        return mapper.toResponse(useCase.update(id, mapper.toDomain(req)));
+    }
+
     /** Pre-check S2S de duplicado de documento (evita huerfanos en orquestaciones). */
     @GetMapping("/third-parties/document/exists")
     public Map<String, Boolean> documentExists(@RequestParam UUID documentTypeId,

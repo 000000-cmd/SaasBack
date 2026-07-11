@@ -50,6 +50,12 @@ public class ThirdPartyService extends GenericCrudService<ThirdParty, UUID>
         if (thirdPartyRepo.existsByDocument(entity.getDocumentTypeId(), entity.getDocumentNumber())) {
             throw new DuplicateResourceException(getResourceName(), "documentNumber", entity.getDocumentNumber());
         }
+        // Regla: a lo sumo UN tercero por usuario. Si ya existe, el orquestador
+        // debe actualizar (PUT), no crear otro. Evita los duplicados que rompían
+        // el endpoint by-user.
+        if (entity.getUserId() != null && thirdPartyRepo.existsByUserId(entity.getUserId())) {
+            throw new DuplicateResourceException(getResourceName(), "userId", entity.getUserId().toString());
+        }
         // Columna NOT NULL: el mapper copia null del request y pisaria el
         // default de la entidad (mismo patron que IsPrimary/IsVerified en hijos).
         if (entity.getBiometricEnabled() == null) entity.setBiometricEnabled(false);

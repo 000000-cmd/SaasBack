@@ -40,7 +40,12 @@ public class ThirdPartyRepositoryAdapter
 
     @Override
     public Optional<ThirdParty> findByUserId(UUID userId) {
-        return jpa.findByUserId(userId).map(getMapper()::toDomain);
+        return jpa.findFirstByUserIdOrderByIdAsc(userId).map(getMapper()::toDomain);
+    }
+
+    @Override
+    public boolean existsByUserId(UUID userId) {
+        return jpa.existsByUserId(userId);
     }
 
     @Override

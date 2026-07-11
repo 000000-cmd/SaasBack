@@ -2,6 +2,7 @@ package com.saas.search.infrastructure.controller;
 
 import com.saas.common.dto.ApiResponse;
 import com.saas.search.application.dto.search.SearchCriteria;
+import com.saas.search.application.dto.search.SearchRequest;
 import com.saas.search.application.dto.search.SearchResponse;
 import com.saas.search.application.service.search.RoleSearchService;
 import com.saas.search.application.service.search.ThirdPartySearchService;
@@ -13,13 +14,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * Endpoints publicos de busqueda en Elasticsearch.
@@ -48,79 +48,57 @@ public class SearchController {
     private final RoleSearchService roleSearch;
     private final ThirdPartySearchService thirdPartySearch;
 
-    @GetMapping("/users")
-    public ResponseEntity<ApiResponse<SearchResponse<UserDocument>>> searchUsers(
-            @RequestParam(required = false) String q,
-            @RequestParam(required = false) List<String> roleCodes,
-            @RequestParam(required = false) Boolean enabled,
-            @RequestParam(required = false) UUID businessId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String sort) {
-
+    @PostMapping("/users")
+    public ResponseEntity<ApiResponse<SearchResponse<UserDocument>>> searchUsers(@RequestBody SearchRequest req) {
         Map<String, Object> filters = new HashMap<>();
-        if (roleCodes != null && !roleCodes.isEmpty()) filters.put("roleCodes", roleCodes);
-        if (enabled != null) filters.put("enabled", enabled);
+        if (req.roleCodes() != null && !req.roleCodes().isEmpty()) filters.put("roleCodes", req.roleCodes());
+        if (req.enabled() != null) filters.put("enabled", req.enabled());
 
         SearchCriteria criteria = SearchCriteria.builder()
-                .query(q)
+                .query(req.q())
                 .filters(filters)
-                .businessId(businessId)
+                .businessId(req.businessId())
                 .build();
 
-        String[] sortParts = parseSort(sort);
+        String[] sortParts = parseSort(req.sort());
         SearchResponse<UserDocument> result = userSearch.search(
-                criteria, page, size, sortParts[0], sortParts[1]);
+                criteria, req.pageOrDefault(), req.sizeOrDefault(), sortParts[0], sortParts[1]);
 
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
-    @GetMapping("/roles")
-    public ResponseEntity<ApiResponse<SearchResponse<RoleDocument>>> searchRoles(
-            @RequestParam(required = false) String q,
-            @RequestParam(required = false) Boolean enabled,
-            @RequestParam(required = false) UUID businessId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String sort) {
-
+    @PostMapping("/roles")
+    public ResponseEntity<ApiResponse<SearchResponse<RoleDocument>>> searchRoles(@RequestBody SearchRequest req) {
         Map<String, Object> filters = new HashMap<>();
-        if (enabled != null) filters.put("enabled", enabled);
+        if (req.enabled() != null) filters.put("enabled", req.enabled());
 
         SearchCriteria criteria = SearchCriteria.builder()
-                .query(q)
+                .query(req.q())
                 .filters(filters)
-                .businessId(businessId)
+                .businessId(req.businessId())
                 .build();
 
-        String[] sortParts = parseSort(sort);
+        String[] sortParts = parseSort(req.sort());
         SearchResponse<RoleDocument> result = roleSearch.search(
-                criteria, page, size, sortParts[0], sortParts[1]);
+                criteria, req.pageOrDefault(), req.sizeOrDefault(), sortParts[0], sortParts[1]);
 
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
-    @GetMapping("/third-parties")
-    public ResponseEntity<ApiResponse<SearchResponse<ThirdPartyDocument>>> searchThirdParties(
-            @RequestParam(required = false) String q,
-            @RequestParam(required = false) Boolean enabled,
-            @RequestParam(required = false) UUID businessId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String sort) {
-
+    @PostMapping("/third-parties")
+    public ResponseEntity<ApiResponse<SearchResponse<ThirdPartyDocument>>> searchThirdParties(@RequestBody SearchRequest req) {
         Map<String, Object> filters = new HashMap<>();
-        if (enabled != null) filters.put("enabled", enabled);
+        if (req.enabled() != null) filters.put("enabled", req.enabled());
 
         SearchCriteria criteria = SearchCriteria.builder()
-                .query(q)
+                .query(req.q())
                 .filters(filters)
-                .businessId(businessId)
+                .businessId(req.businessId())
                 .build();
 
-        String[] sortParts = parseSort(sort);
+        String[] sortParts = parseSort(req.sort());
         SearchResponse<ThirdPartyDocument> result = thirdPartySearch.search(
-                criteria, page, size, sortParts[0], sortParts[1]);
+                criteria, req.pageOrDefault(), req.sizeOrDefault(), sortParts[0], sortParts[1]);
 
         return ResponseEntity.ok(ApiResponse.success(result));
     }

@@ -14,5 +14,11 @@ public interface JpaThirdPartyRepository extends JpaRepository<ThirdPartyEntity,
 
     boolean existsByDocumentTypeIdAndDocumentNumber(UUID documentTypeId, String documentNumber);
 
-    Optional<ThirdPartyEntity> findByUserId(UUID userId);
+    /**
+     * Debe existir a lo sumo un tercero por usuario. Se usa `findFirst...` (LIMIT 1)
+     * para no estallar con datos heredados que tuvieran duplicados por un bug previo.
+     */
+    Optional<ThirdPartyEntity> findFirstByUserIdOrderByIdAsc(UUID userId);
+
+    boolean existsByUserId(UUID userId);
 }

@@ -20,5 +20,8 @@ public interface IThirdPartyRepositoryPort extends IGenericRepositoryPort<ThirdP
 
     Optional<ThirdParty> findByUserId(UUID userId);
 
+    /** A lo sumo un tercero por usuario: se valida antes de crear. */
+    boolean existsByUserId(UUID userId);
+
     List<ThirdParty> findByIds(Collection<UUID> ids);
 }
