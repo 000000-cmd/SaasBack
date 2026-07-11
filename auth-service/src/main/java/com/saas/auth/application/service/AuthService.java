@@ -52,6 +52,12 @@ public class AuthService implements IAuthUseCase {
     private static final UUID OWNER_ROLE_ID = UUID.fromString("11111111-0000-0000-0000-000000000004");
 
     @Override
+    @Transactional(readOnly = true)
+    public boolean emailExists(String email) {
+        return email != null && !email.isBlank() && userRepo.existsByEmail(email.trim());
+    }
+
+    @Override
     @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userRepo.findByUsernameOrEmail(request.usernameOrEmail())

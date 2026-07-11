@@ -32,7 +32,7 @@ public class SecurityConfig {
                         // Spring Security ve los paths sin el context-path (/auth lo despoja
                         // el servlet antes de que llegue aqui). Por eso son /login y /refresh,
                         // no /auth/login. La URL publica sigue siendo /auth/login.
-                        .requestMatchers("/login", "/refresh", "/register-owner").permitAll()
+                        .requestMatchers("/login", "/refresh", "/register-owner", "/exists").permitAll()
                         .requestMatchers("/actuator/**", "/api/info", "/api/version").permitAll()
                         // Endpoints S2S (consumidos por search-service via Feign para reindex).
                         // No traversed por gateway -- la red interna los protege.

@@ -16,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import com.saas.auth.application.dto.request.EmailCheckRequest;
 
 /**
  * El prefijo {@code /auth} ya viene aplicado a nivel de servicio mediante
@@ -41,6 +42,15 @@ public class AuthController {
     @PostMapping("/register-owner")
     public ResponseEntity<ApiResponse<LoginResponse>> registerOwner(@Valid @RequestBody RegisterOwnerRequest request) {
         return ResponseEntity.ok(ApiResponse.success(authUseCase.registerOwner(request), "Registro exitoso"));
+    }
+
+    /**
+     * ¿El correo ya está en uso? PÚBLICO — lo usa el primer paso del registro
+     * para avisar antes de que el usuario llene el resto. Solo lectura.
+     */
+    @PostMapping("/exists")
+    public ResponseEntity<ApiResponse<Boolean>> emailExists(@RequestBody EmailCheckRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authUseCase.emailExists(request.email()), "OK"));
     }
 
     @PostMapping("/refresh")
