@@ -20,6 +20,9 @@ public interface IThirdPartyRepositoryPort extends IGenericRepositoryPort<ThirdP
 
     Optional<ThirdParty> findByUserId(UUID userId);
 
+    /** Persona vinculada a una cuenta con ese numero de documento (login flexible). */
+    Optional<ThirdParty> findAccountHolderByDocumentNumber(String documentNumber);
+
     /** A lo sumo un tercero por usuario: se valida antes de crear. */
     boolean existsByUserId(UUID userId);
 

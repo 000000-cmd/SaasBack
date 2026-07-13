@@ -20,5 +20,11 @@ public interface JpaThirdPartyRepository extends JpaRepository<ThirdPartyEntity,
      */
     Optional<ThirdPartyEntity> findFirstByUserIdOrderByIdAsc(UUID userId);
 
+    /**
+     * Login por documento: la persona VINCULADA A UNA CUENTA con ese numero
+     * (sin tipo: el usuario digita solo el numero). LIMIT 1 por robustez.
+     */
+    Optional<ThirdPartyEntity> findFirstByDocumentNumberAndUserIdIsNotNullOrderByIdAsc(String documentNumber);
+
     boolean existsByUserId(UUID userId);
 }

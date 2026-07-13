@@ -21,6 +21,8 @@ import java.util.UUID;
  *   - sub        : userId (UUID)
  *   - username   : username
  *   - roles      : Set&lt;String&gt; codigos de rol
+ *   - businessId : UUID del negocio del dueño (opcional; ausente para admins o
+ *                  dueños que aún no aprovisionaron)
  *   - iat / exp  : estandar
  */
 @Slf4j
@@ -41,16 +43,18 @@ public class JwtTokenProvider {
         this.refreshTokenTtlMillis = refreshTtl;
     }
 
-    public String generateAccessToken(UUID userId, String username, Set<String> roles) {
+    public String generateAccessToken(UUID userId, String username, Set<String> roles, UUID businessId) {
         Instant now = Instant.now();
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(userId.toString())
                 .claim("username", username)
                 .claim("roles", roles)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plusMillis(accessTokenTtlMillis)))
-                .signWith(key)
-                .compact();
+                .expiration(Date.from(now.plusMillis(accessTokenTtlMillis)));
+        if (businessId != null) {
+            builder.claim("businessId", businessId.toString());
+        }
+        return builder.signWith(key).compact();
     }
 
     public Claims parse(String token) {

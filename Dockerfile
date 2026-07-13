@@ -122,6 +122,9 @@ ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
 # ===========================================
 FROM base-runtime AS system-service
 COPY --from=builder --chown=appuser:appgroup /app/system-service/target/*.jar app.jar
+# Almacen de APKs (app-versions): debe existir y ser escribible por appuser
+# (era la causa de que el upload al historico fallara en contenedor).
+RUN mkdir -p /app/storage/apk && chown -R appuser:appgroup /app/storage
 USER appuser
 EXPOSE 8083
 ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
@@ -171,6 +174,9 @@ ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
 # ===========================================
 FROM base-runtime AS business-service
 COPY --from=builder --chown=appuser:appgroup /app/business-service/target/*.jar app.jar
+# Assets de la landing publica (subidos desde el editor "Mi pagina"): el dir
+# debe existir y ser escribible por appuser; el compose lo monta como volumen.
+RUN mkdir -p /app/storage/landing && chown -R appuser:appgroup /app/storage
 USER appuser
 EXPOSE 8086
 ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"

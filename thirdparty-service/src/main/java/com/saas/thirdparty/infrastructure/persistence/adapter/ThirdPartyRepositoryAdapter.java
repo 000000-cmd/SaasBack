@@ -44,6 +44,12 @@ public class ThirdPartyRepositoryAdapter
     }
 
     @Override
+    public Optional<ThirdParty> findAccountHolderByDocumentNumber(String documentNumber) {
+        return jpa.findFirstByDocumentNumberAndUserIdIsNotNullOrderByIdAsc(documentNumber)
+                .map(getMapper()::toDomain);
+    }
+
+    @Override
     public boolean existsByUserId(UUID userId) {
         return jpa.existsByUserId(userId);
     }

@@ -8,6 +8,7 @@ import com.saas.auth.application.dto.response.UserResponse;
 import com.saas.auth.application.mapper.UserMapper;
 import com.saas.auth.domain.model.User;
 import com.saas.auth.domain.port.in.IUserUseCase;
+import com.saas.auth.infrastructure.security.BusinessResolver;
 import com.saas.common.dto.ApiResponse;
 import com.saas.common.security.IUserPrincipal;
 import jakarta.validation.Valid;
@@ -35,11 +36,14 @@ public class UserController {
 
     private final IUserUseCase userUseCase;
     private final UserMapper userMapper;
+    private final BusinessResolver businessResolver;
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> me(@AuthenticationPrincipal IUserPrincipal principal) {
         User user = userUseCase.loadWithRoles(principal.getUserId());
-        return ResponseEntity.ok(ApiResponse.success(toResponseWithRoles(user)));
+        // El businessId solo tiene sentido para la sesión propia (gate del front).
+        UUID businessId = businessResolver.resolve(user.getId());
+        return ResponseEntity.ok(ApiResponse.success(toResponseWithRoles(user, businessId)));
     }
 
     /** Marca visto el modal de bienvenida del primer ingreso. */
@@ -113,13 +117,18 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(null, "Usuario deshabilitado"));
     }
 
+    /** Admin/listados: sin businessId (no dispara lookups por cada usuario). */
     private UserResponse toResponseWithRoles(User user) {
+        return toResponseWithRoles(user, null);
+    }
+
+    private UserResponse toResponseWithRoles(User user, UUID businessId) {
         UserResponse base = userMapper.toResponse(user);
         return new UserResponse(
                 base.id(), base.username(), base.email(), base.firstName(), base.lastName(),
                 base.fullName(), base.profilePhoto(), base.theme(), base.languageCode(),
                 base.lastLoginAt(), base.isFirstLogin(), base.enabled(), base.visible(),
-                user.getRoleCodes(), base.createdDate()
+                user.getRoleCodes(), base.createdDate(), businessId
         );
     }
 }

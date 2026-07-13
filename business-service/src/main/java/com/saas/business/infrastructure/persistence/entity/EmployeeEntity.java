@@ -19,10 +19,12 @@ public class EmployeeEntity extends BaseEntity {
     private UUID thirdPartyId;
     @JdbcTypeCode(SqlTypes.CHAR) @Column(name = "BranchId", length = 36, nullable = false)
     private UUID branchId;
-    @JdbcTypeCode(SqlTypes.CHAR) @Column(name = "PositionId", length = 36, nullable = false)
+    // Nullable desde V3: el alta minima crea un "shell" (solo tercero+sede);
+    // cargo y fecha llegan despues (APK del empleado o edicion del dueño).
+    @JdbcTypeCode(SqlTypes.CHAR) @Column(name = "PositionId", length = 36)
     private UUID positionId;
     @Column(name = "EmployeeCode", length = 40) private String employeeCode;
-    @Column(name = "HireDate", nullable = false) private LocalDate hireDate;
+    @Column(name = "HireDate") private LocalDate hireDate;
     @Column(name = "TerminationDate") private LocalDate terminationDate;
     @JdbcTypeCode(SqlTypes.CHAR) @Column(name = "StatusId", length = 36) private UUID statusId;
 }

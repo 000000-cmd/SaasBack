@@ -38,10 +38,10 @@ public class UserEntity extends BaseEntity {
     @Column(name = "PasswordHash", nullable = false, length = 120)
     private String passwordHash;
 
-    @Column(name = "FirstName", nullable = false, length = 80)
+    @Column(name = "FirstName", length = 80)
     private String firstName;
 
-    @Column(name = "LastName", nullable = false, length = 80)
+    @Column(name = "LastName", length = 80)
     private String lastName;
 
     @Column(name = "ProfilePhoto", length = 500)

@@ -29,11 +29,13 @@ import java.util.UUID;
 @SQLRestriction("Visible = 1")
 public class ThirdPartyEntity extends BaseEntity {
 
+    // Nullable desde V3: el alta minima de empleado crea un tercero "shell"
+    // (solo userId+businessId); el documento llega despues desde el APK.
     @JdbcTypeCode(SqlTypes.CHAR)
-    @Column(name = "DocumentTypeId", length = 36, nullable = false)
+    @Column(name = "DocumentTypeId", length = 36)
     private UUID documentTypeId;
 
-    @Column(name = "DocumentNumber", length = 40, nullable = false)
+    @Column(name = "DocumentNumber", length = 40)
     private String documentNumber;
 
     @JdbcTypeCode(SqlTypes.CHAR)

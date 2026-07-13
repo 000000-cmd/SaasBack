@@ -78,6 +78,21 @@ public class InternalController {
         return out;
     }
 
+    /**
+     * Tarjetas de persona en lote (id -> nombre + foto). Para vistas que
+     * muestran al empleado con su perfil (p.ej. compensación individual).
+     */
+    @PostMapping("/third-parties/cards")
+    public Map<String, PersonCard> cards(@RequestBody Set<UUID> ids) {
+        Map<String, PersonCard> out = new HashMap<>();
+        for (ThirdParty t : useCase.findByIds(ids)) {
+            out.put(t.getId().toString(), new PersonCard(fullName(t), t.getPhotoUrl()));
+        }
+        return out;
+    }
+
+    public record PersonCard(String fullName, String photoUrl) {}
+
     private static String fullName(ThirdParty t) {
         return String.join(" ", Stream.of(t.getFirstName(), t.getSecondName(), t.getFirstLastName(), t.getSecondLastName())
                 .filter(s -> s != null && !s.isBlank()).toList());
@@ -91,4 +106,18 @@ public class InternalController {
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
+
+    /**
+     * Login flexible: resuelve la CUENTA (userId) dueña del numero de documento.
+     * Solo mira personas ya vinculadas a un usuario; 404 si no hay match.
+     */
+    @GetMapping("/third-parties/user-by-document")
+    public ResponseEntity<UserByDocument> userByDocument(@RequestParam String documentNumber) {
+        return useCase.findAccountHolderByDocumentNumber(documentNumber.trim())
+                .map(t -> new UserByDocument(t.getUserId()))
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    public record UserByDocument(UUID userId) {}
 }

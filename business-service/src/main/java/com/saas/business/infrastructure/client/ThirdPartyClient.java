@@ -37,6 +37,10 @@ public interface ThirdPartyClient {
     @PostMapping("/internal/third-parties/names")
     Map<String, String> personNames(@RequestBody Set<UUID> ids);
 
+    /** Tarjetas de persona en lote (id -> nombre + foto de perfil). */
+    @PostMapping("/internal/third-parties/cards")
+    Map<String, PersonCard> personCards(@RequestBody Set<UUID> ids);
+
     /** Pre-check de duplicado de documento antes de orquestar un alta. */
     @GetMapping("/internal/third-parties/document/exists")
     Map<String, Boolean> documentExists(@org.springframework.web.bind.annotation.RequestParam("documentTypeId") UUID documentTypeId,
@@ -59,4 +63,7 @@ public interface ThirdPartyClient {
 
     /** Solo se necesita el id del tercero creado. */
     record PersonResponse(UUID id) {}
+
+    /** Espejo del PersonCard interno de thirdparty (nombre + foto). */
+    record PersonCard(String fullName, String photoUrl) {}
 }

@@ -12,6 +12,8 @@ import com.saas.auth.domain.port.in.IAuthUseCase;
 import com.saas.auth.domain.port.in.IUserUseCase;
 import com.saas.auth.domain.port.out.IRefreshTokenRepositoryPort;
 import com.saas.auth.domain.port.out.IUserRepositoryPort;
+import com.saas.auth.infrastructure.client.ThirdPartyServiceClient;
+import com.saas.auth.infrastructure.security.BusinessResolver;
 import com.saas.auth.infrastructure.security.JwtBlacklistService;
 import com.saas.auth.infrastructure.security.JwtTokenProvider;
 import com.saas.common.exception.InvalidCredentialsException;
@@ -23,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -43,6 +46,8 @@ public class AuthService implements IAuthUseCase {
     private final JwtTokenProvider jwt;
     private final JwtBlacklistService blacklist;
     private final UserMapper userMapper;
+    private final BusinessResolver businessResolver;
+    private final ThirdPartyServiceClient thirdPartyClient;
 
     /**
      * Id fijo y conocido del rol {@code OWNER} (sembrado en la migración V1).
@@ -60,7 +65,11 @@ public class AuthService implements IAuthUseCase {
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        // Login flexible: username, correo o numero de documento (comodidad del
+        // APK). El documento se resuelve via thirdparty solo si no hay match
+        // directo y el identificador es puramente numerico.
         User user = userRepo.findByUsernameOrEmail(request.usernameOrEmail())
+                .or(() -> findByDocumentNumber(request.usernameOrEmail()))
                 .orElseThrow(() -> new InvalidCredentialsException("Credenciales invalidas"));
 
         if (!Boolean.TRUE.equals(user.getEnabled())) {
@@ -74,13 +83,16 @@ public class AuthService implements IAuthUseCase {
         // Cargar roles efectivos para el JWT
         User withRoles = userUseCase.loadWithRoles(user.getId());
 
-        TokenPairResponse tokens = issueTokens(withRoles);
+        // Resolver el negocio del dueño una sola vez: se sella en el token y se
+        // expone en la respuesta (evita el doble lookup).
+        UUID businessId = businessResolver.resolve(withRoles.getId());
+        TokenPairResponse tokens = issueTokens(withRoles, businessId);
 
         // Actualizar ultimo login (sin tocar otros campos)
         withRoles.setLastLoginAt(LocalDateTime.now());
         userRepo.update(withRoles);
 
-        UserResponse userResponse = toUserResponseWithRoles(withRoles);
+        UserResponse userResponse = toUserResponseWithRoles(withRoles, businessId);
         log.info("Login exitoso: userId={} username={}", withRoles.getId(), withRoles.getUsername());
         return new LoginResponse(tokens, userResponse);
     }
@@ -118,9 +130,11 @@ public class AuthService implements IAuthUseCase {
 
         User user = userUseCase.loadWithRoles(token.getUserId());
 
-        // Rotacion: revoca el viejo y emite un nuevo par
+        // Rotacion: revoca el viejo y emite un nuevo par. Re-resolvemos el negocio
+        // para que un dueño recién aprovisionado obtenga el claim en el refresh.
         refreshTokenRepo.revokeByToken(refreshTokenValue);
-        return issueTokens(user);
+        UUID businessId = businessResolver.resolve(user.getId());
+        return issueTokens(user, businessId);
     }
 
     @Override
@@ -142,8 +156,26 @@ public class AuthService implements IAuthUseCase {
         log.info("Logout global: userId={}", userId);
     }
 
-    private TokenPairResponse issueTokens(User user) {
-        String access = jwt.generateAccessToken(user.getId(), user.getUsername(), user.getRoleCodes());
+    /**
+     * Resuelve la cuenta por numero de documento (solo identificadores 100%
+     * numericos de tamano plausible). NUNCA rompe el login: ante cualquier
+     * fallo del S2S devuelve empty y el flujo termina en credenciales invalidas.
+     */
+    private Optional<User> findByDocumentNumber(String identifier) {
+        String id = identifier == null ? "" : identifier.trim();
+        if (!id.matches("\\d{5,20}")) return Optional.empty();
+        try {
+            ThirdPartyServiceClient.UserByDocumentDto dto = thirdPartyClient.userByDocument(id);
+            if (dto == null || dto.userId() == null) return Optional.empty();
+            return userRepo.findById(dto.userId());
+        } catch (Exception ex) {
+            log.debug("Login por documento sin match para '{}': {}", id, ex.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private TokenPairResponse issueTokens(User user, UUID businessId) {
+        String access = jwt.generateAccessToken(user.getId(), user.getUsername(), user.getRoleCodes(), businessId);
 
         String refreshValue = UUID.randomUUID().toString().replace("-", "")
                 + UUID.randomUUID().toString().replace("-", "");
@@ -159,14 +191,15 @@ public class AuthService implements IAuthUseCase {
         return TokenPairResponse.bearer(access, refreshValue, jwt.getAccessTokenTtlMillis() / 1000);
     }
 
-    private UserResponse toUserResponseWithRoles(User user) {
+    private UserResponse toUserResponseWithRoles(User user, UUID businessId) {
         UserResponse base = userMapper.toResponse(user);
         return new UserResponse(
                 base.id(), base.username(), base.email(), base.firstName(), base.lastName(),
                 base.fullName(), base.profilePhoto(), base.theme(), base.languageCode(),
                 base.lastLoginAt(), base.isFirstLogin(), base.enabled(), base.visible(),
                 user.getRoleCodes(),
-                base.createdDate()
+                base.createdDate(),
+                businessId
         );
     }
 }

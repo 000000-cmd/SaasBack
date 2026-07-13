@@ -22,5 +22,6 @@ public record UserResponse(
         Boolean enabled,
         Boolean visible,
         Set<String> roleCodes,
-        LocalDateTime createdDate
+        LocalDateTime createdDate,
+        UUID businessId
 ) {}

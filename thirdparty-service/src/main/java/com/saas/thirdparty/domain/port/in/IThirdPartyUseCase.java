@@ -20,5 +20,8 @@ public interface IThirdPartyUseCase extends IGenericUseCase<ThirdParty, UUID> {
 
     Optional<ThirdParty> findByUserId(UUID userId);
 
+    /** Persona vinculada a una cuenta con ese numero de documento (login flexible). */
+    Optional<ThirdParty> findAccountHolderByDocumentNumber(String documentNumber);
+
     List<ThirdParty> findByIds(Collection<UUID> ids);
 }

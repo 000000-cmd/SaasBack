@@ -47,7 +47,11 @@ public class ThirdPartyService extends GenericCrudService<ThirdParty, UUID>
 
     @Override
     protected void onBeforeCreate(ThirdParty entity) {
-        if (thirdPartyRepo.existsByDocument(entity.getDocumentTypeId(), entity.getDocumentNumber())) {
+        // El documento es opcional (shell del alta minima); la unicidad se
+        // valida solo cuando viene completo.
+        boolean hasDocument = entity.getDocumentTypeId() != null
+                && entity.getDocumentNumber() != null && !entity.getDocumentNumber().isBlank();
+        if (hasDocument && thirdPartyRepo.existsByDocument(entity.getDocumentTypeId(), entity.getDocumentNumber())) {
             throw new DuplicateResourceException(getResourceName(), "documentNumber", entity.getDocumentNumber());
         }
         // Regla: a lo sumo UN tercero por usuario. Si ya existe, el orquestador
@@ -74,6 +78,11 @@ public class ThirdPartyService extends GenericCrudService<ThirdParty, UUID>
     @Override @Transactional(readOnly = true)
     public Optional<ThirdParty> findByUserId(UUID userId) {
         return thirdPartyRepo.findByUserId(userId);
+    }
+
+    @Override @Transactional(readOnly = true)
+    public Optional<ThirdParty> findAccountHolderByDocumentNumber(String documentNumber) {
+        return thirdPartyRepo.findAccountHolderByDocumentNumber(documentNumber);
     }
 
     @Override @Transactional(readOnly = true)

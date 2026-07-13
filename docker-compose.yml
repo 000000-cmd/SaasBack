@@ -542,6 +542,9 @@ services:
         -Djava.security.egd=file:/dev/./urandom
     ports:
       - "8083:8083"
+    volumes:
+      # Binarios del APK (historico de versiones): persisten entre recreaciones
+      - apk_storage:/app/storage/apk
     networks:
       - saas-network
     depends_on:
@@ -643,6 +646,9 @@ services:
         -Djava.security.egd=file:/dev/./urandom
     ports:
       - "8086:8086"
+    volumes:
+      # Assets de la landing publica (persisten entre recreaciones del contenedor)
+      - landing_assets:/app/storage/landing
     networks:
       - saas-network
     depends_on:
@@ -784,10 +790,12 @@ networks:
 # VOLUMES
 # ===========================================
 volumes:
-  mysql_data:    { driver: local }
-  redis_data:    { driver: local }
-  kafka_1_data:  { driver: local }
-  es_01_data:    { driver: local }
+  mysql_data:      { driver: local }
+  redis_data:      { driver: local }
+  kafka_1_data:    { driver: local }
+  es_01_data:      { driver: local }
+  landing_assets:  { driver: local }
+  apk_storage:     { driver: local }
   # Para prod (3 nodos), descomentar:
   # es_02_data:    { driver: local }
   # es_03_data:    { driver: local }

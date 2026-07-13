@@ -28,6 +28,7 @@ public interface UserMapper {
     User toDomain(CreateUserRequest request);
 
     @Mapping(target = "fullName", expression = "java(user.getFullName())")
+    @Mapping(target = "businessId", ignore = true)
     UserResponse toResponse(User user);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

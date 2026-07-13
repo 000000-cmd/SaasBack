@@ -3,6 +3,7 @@ package com.saas.business.application.service;
 import com.saas.business.domain.model.Employee;
 import com.saas.business.domain.port.in.IEmployeeUseCase;
 import com.saas.business.domain.port.out.IEmployeeRepositoryPort;
+import com.saas.common.exception.DuplicateResourceException;
 import com.saas.common.service.GenericCrudService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,15 @@ public class EmployeeService extends GenericCrudService<Employee, UUID> implemen
     public EmployeeService(IEmployeeRepositoryPort repo) { super(repo); this.repo = repo; }
 
     @Override protected String getResourceName() { return "Empleado"; }
+
+    @Override
+    protected void onBeforeCreate(Employee entity) {
+        // Regla 1:1 tercero<->empleado: una persona tiene a lo sumo UN registro
+        // laboral. Espejo de la regla usuario<->tercero en thirdparty-service.
+        if (entity.getThirdPartyId() != null && !repo.findByThirdPartyId(entity.getThirdPartyId()).isEmpty()) {
+            throw new DuplicateResourceException(getResourceName(), "thirdPartyId", entity.getThirdPartyId().toString());
+        }
+    }
 
     @Override
     protected void applyChanges(Employee existing, Employee incoming) {

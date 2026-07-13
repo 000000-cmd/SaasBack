@@ -59,11 +59,6 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             return reject(exchange, "Token invalido o expirado", HttpStatus.UNAUTHORIZED);
         }
 
-        String businessId = request.getHeaders().getFirst(HttpHeaders.BUSINESSID);
-        if(businessId != null){
-            log.info("Procesando registro para la empresa "+ businessId);
-        }
-
         return redis.hasKey(BLACKLIST_KEY_PREFIX + token)
                 .defaultIfEmpty(Boolean.FALSE)
                 .flatMap(blacklisted -> {
@@ -90,12 +85,21 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         @SuppressWarnings("unchecked")
         List<String> roles = claims.get("roles", List.class);
         String rolesCsv = roles == null ? "" : String.join(",", roles);
+        String businessId = claims.get("businessId", String.class);
 
-        return req.mutate()
+        ServerHttpRequest.Builder builder = req.mutate()
                 .header("X-User-Id", userId == null ? "" : userId)
                 .header("X-User-Username", username == null ? "" : username)
                 .header("X-User-Roles", rolesCsv)
-                .build();
+                // Anti-spoof: descartamos cualquier X-Business-Id entrante; solo vale
+                // el que resolvemos desde el claim confiable del JWT.
+                .headers(h -> h.remove("X-Business-Id"));
+        // El businessId del dueño viaja como header para que downstream lo selle
+        // en eventos/auditoria sin lookup. Ausente para admins o dueños sin negocio.
+        if (businessId != null && !businessId.isBlank()) {
+            builder.header("X-Business-Id", businessId);
+        }
+        return builder.build();
     }
 
     private Mono<Void> reject(ServerWebExchange exchange, String message, HttpStatus status) {

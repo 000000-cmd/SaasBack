@@ -8,7 +8,6 @@ import com.saas.business.domain.port.in.IBranchUseCase;
 import com.saas.business.domain.port.in.IEmployeeUseCase;
 import com.saas.business.infrastructure.client.AuthClient;
 import com.saas.business.infrastructure.client.ThirdPartyClient;
-import com.saas.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,14 +16,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 
 /**
- * Orquesta el alta COMPLETA de un empleado desde el dashboard del dueño:
- * cuenta (auth, rol EMPLOYEE) → persona (thirdparty) → registro laboral (local).
+ * Alta MÍNIMA de un empleado desde el dashboard del dueño:
+ * cuenta (auth, rol EMPLOYEE) → tercero shell (solo userId+businessId) →
+ * registro laboral shell (solo thirdPartyId+branchId).
  *
- * <p>Orden pensado para minimizar huérfanos: primero se valida la sede y el
- * duplicado de documento (pre-check S2S); el alta de cuenta falla limpia si el
- * username/email ya existen (aún no se creó nada más). Igual que el provisioning
- * del negocio, no hay saga de compensación todavía: si la persona falla después
- * de crear la cuenta, la cuenta queda huérfana (mejora futura).</p>
+ * <p>El empleado completa su información (documento, nombres, cargo…) desde el
+ * APK. Orden pensado para minimizar huérfanos: la sede se valida primero y el
+ * alta de cuenta falla limpia si username/email ya existen (aún no se creó nada
+ * más). Duplicidad 1:1 garantizada por los servicios de dominio: un usuario ↔
+ * un tercero (thirdparty) y un tercero ↔ un empleado (aquí).</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -40,39 +40,30 @@ public class EmployeeProvisioningService {
 
     @Transactional
     public EmployeeProvisionResponse provision(EmployeeProvisionRequest r) {
-        // 1) La sede debe existir (404 si no) y da el businessId del contexto.
+        // 1) La sede debe existir (404 si no) y aporta el businessId del contexto.
         Branch branch = branchUseCase.getById(r.branchId());
 
-        // 2) Pre-check de documento duplicado (evita cuentas huérfanas).
-        Boolean exists = thirdPartyClient
-                .documentExists(r.documentTypeId(), r.documentNumber())
-                .getOrDefault("exists", false);
-        if (Boolean.TRUE.equals(exists)) {
-            throw new BusinessException("Ya existe una persona con ese documento");
-        }
-
-        // 3) Cuenta con rol EMPLOYEE (por código; auth resuelve el id sembrado).
+        // 2) Cuenta con rol EMPLOYEE (username/email duplicados fallan aquí,
+        //    antes de crear cualquier otra cosa).
         AuthClient.CreatedUser account = authClient.createUser(new AuthClient.CreateUserRequest(
-                r.username(), r.email(), r.firstName(), r.firstLastName(),
+                r.username(), r.email(), null, null,
                 r.password(), Set.of(EMPLOYEE_ROLE_CODE)));
 
-        // 4) Persona vinculada a la cuenta y al negocio de la sede.
+        // 3) Tercero SHELL: solo las FKs que reservan el cupo (userId+businessId).
+        //    thirdparty valida 1:1 usuario↔tercero.
         ThirdPartyClient.PersonResponse person = thirdPartyClient.createPerson(
                 new ThirdPartyClient.CreatePersonRequest(
-                        r.documentTypeId(), r.documentNumber(), account.id(), branch.getBusinessId(),
-                        r.firstName(), r.secondName(), r.firstLastName(), r.secondLastName(),
-                        r.genderId(), r.birthDate(), null));
+                        null, null, account.id(), branch.getBusinessId(),
+                        null, null, null, null, null, null, null));
 
-        // 5) Registro laboral en la sede.
+        // 4) Registro laboral SHELL: tercero+sede. EmployeeService valida 1:1
+        //    tercero↔empleado.
         Employee employee = employeeUseCase.create(Employee.builder()
                 .thirdPartyId(person.id())
                 .branchId(branch.getId())
-                .positionId(r.positionId())
-                .employeeCode(r.employeeCode())
-                .hireDate(r.hireDate())
                 .build());
 
-        log.info("Empleado aprovisionado: employeeId={} thirdPartyId={} userId={}",
+        log.info("Empleado (shell) aprovisionado: employeeId={} thirdPartyId={} userId={}",
                 employee.getId(), person.id(), account.id());
         return new EmployeeProvisionResponse(employee.getId(), person.id(), account.id(), account.username());
     }

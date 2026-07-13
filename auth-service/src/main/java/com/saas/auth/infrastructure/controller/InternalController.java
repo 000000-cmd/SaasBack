@@ -63,11 +63,12 @@ public class InternalController {
         return new CreatedUser(created.getId(), created.getUsername(), created.getEmail());
     }
 
+    /** Nombres opcionales: el alta mínima de empleado no los conoce (los completa el APK). */
     public record CreateInternalUserRequest(
             @NotBlank @Size(max = 60) String username,
             @NotBlank @Email @Size(max = 120) String email,
-            @NotBlank @Size(max = 80) String firstName,
-            @NotBlank @Size(max = 80) String lastName,
+            @Size(max = 80) String firstName,
+            @Size(max = 80) String lastName,
             @NotBlank @Size(min = 8, max = 60) String password,
             @NotEmpty Set<String> roleCodes
     ) {}

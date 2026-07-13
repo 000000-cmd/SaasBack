@@ -35,23 +35,27 @@ public class EmployeeController {
     // Sin GET plano por sede: /detailed lo cubre (mismo listado + nombre de la
     // persona resuelto). Un solo endpoint de lectura por caso de uso.
 
-    /** Empleados de una sede con el nombre de la persona ya resuelto (via Feign batch). */
+    /** Empleados de una sede con la persona resuelta (nombre + foto, via Feign batch). */
     @GetMapping("/detailed")
     public ResponseEntity<ApiResponse<List<EmployeeDetailResponse>>> detailedByBranch(@RequestParam UUID branchId) {
         List<Employee> emps = useCase.findByBranch(branchId);
         Set<UUID> ids = emps.stream().map(Employee::getThirdPartyId).collect(Collectors.toSet());
-        Map<String, String> names = Map.of();
+        Map<String, ThirdPartyClient.PersonCard> cards = Map.of();
         if (!ids.isEmpty()) {
-            try { names = thirdPartyClient.personNames(ids); }
-            catch (Exception ex) { log.debug("No se pudieron resolver nombres de personas: {}", ex.getMessage()); }
+            try { cards = thirdPartyClient.personCards(ids); }
+            catch (Exception ex) { log.debug("No se pudieron resolver personas: {}", ex.getMessage()); }
         }
-        final Map<String, String> resolved = names;
+        final Map<String, ThirdPartyClient.PersonCard> resolved = cards;
         List<EmployeeDetailResponse> out = emps.stream()
-                .map(e -> new EmployeeDetailResponse(
-                        e.getId(), e.getThirdPartyId(),
-                        resolved.getOrDefault(e.getThirdPartyId().toString(), "—"),
-                        e.getBranchId(), e.getPositionId(), e.getEmployeeCode(),
-                        e.getHireDate(), e.getTerminationDate(), e.getStatusId(), e.getEnabled()))
+                .map(e -> {
+                    ThirdPartyClient.PersonCard c = resolved.get(e.getThirdPartyId().toString());
+                    return new EmployeeDetailResponse(
+                            e.getId(), e.getThirdPartyId(),
+                            c != null && c.fullName() != null ? c.fullName() : "—",
+                            c != null ? c.photoUrl() : null,
+                            e.getBranchId(), e.getPositionId(), e.getEmployeeCode(),
+                            e.getHireDate(), e.getTerminationDate(), e.getStatusId(), e.getEnabled());
+                })
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(out));
     }
