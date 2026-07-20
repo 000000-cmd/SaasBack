@@ -5,6 +5,6 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record EmployeeCompensationResponse(
-        UUID id, UUID employeeId, String compensationType, BigDecimal compensationValue,
+        UUID id, UUID employeeId, String compensationType, BigDecimal compensationValue, BigDecimal salaryBase,
         LocalDateTime validFrom, LocalDateTime validTo, Boolean enabled
 ) {}

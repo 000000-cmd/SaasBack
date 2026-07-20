@@ -10,6 +10,6 @@ import java.util.UUID;
  * {@code sourceId} = id de esa entidad.
  */
 public record EffectiveCompensationResponse(
-        String source, UUID sourceId, String compensationType, BigDecimal compensationValue,
+        String source, UUID sourceId, String compensationType, BigDecimal compensationValue, BigDecimal salaryBase,
         LocalDateTime validFrom, LocalDateTime validTo
 ) {}

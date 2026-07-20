@@ -12,6 +12,7 @@ public class Employee extends BaseDomain {
     private UUID thirdPartyId;
     private UUID branchId;
     private UUID positionId;     // FK catalogo employee_position
+    private UUID specialtyId;    // FK catalogo specialty (nullable)
     private String employeeCode;
     private LocalDate hireDate;
     private LocalDate terminationDate;

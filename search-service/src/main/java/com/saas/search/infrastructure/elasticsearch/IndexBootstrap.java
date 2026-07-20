@@ -1,6 +1,8 @@
 package com.saas.search.infrastructure.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
 import co.elastic.clients.elasticsearch.indices.update_aliases.Action;
@@ -14,6 +16,8 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
+import java.io.Reader;
+import java.io.StringReader;
 import java.util.List;
 
 /**
@@ -32,6 +36,8 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class IndexBootstrap {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final ElasticsearchClient client;
 
     /** Especificacion declarativa de los indices a crear. */
@@ -39,7 +45,8 @@ public class IndexBootstrap {
             new IndexSpec("users",     "users_v1",     "elasticsearch/users-mapping.json"),
             new IndexSpec("roles",     "roles_v1",     "elasticsearch/roles-mapping.json"),
             new IndexSpec("locations", "locations_v1", "elasticsearch/locations-mapping.json"),
-            new IndexSpec("third_parties", "third_parties_v1", "elasticsearch/thirdparties-mapping.json")
+            new IndexSpec("third_parties", "third_parties_v1", "elasticsearch/thirdparties-mapping.json"),
+            new IndexSpec("employee_balances", "employee_balances_v1", "elasticsearch/employee-balances-mapping.json")
     );
 
     /**
@@ -54,6 +61,7 @@ public class IndexBootstrap {
         for (IndexSpec spec : SPECS){
             try {
                 createIfNotExist(spec);
+                ensureMapping(spec);
                 ensureAlias(spec);
 
             } catch (Exception ex) {
@@ -82,6 +90,36 @@ public class IndexBootstrap {
             client.indices().create(req);
 
             log.info("Indice {} creado con mapping de {}", spec.indexName, spec.mappingPath);
+        }
+    }
+
+    /**
+     * Aplica el mapping del recurso sobre el indice YA existente.
+     *
+     * <p>Sin esto, agregar un campo nuevo al json solo lo veian los entornos
+     * limpios: donde el indice ya existia, {@code createIfNotExist} hacia skip y
+     * el campo quedaba fuera del mapping. Con {@code dynamic: strict} eso no es
+     * un campo faltante sino un ERROR de indexacion que tumba la proyeccion
+     * entera de esa entidad.</p>
+     *
+     * <p>Es idempotente y solo ADITIVO: Elasticsearch acepta campos nuevos y
+     * rechaza cambios incompatibles sobre los existentes (lo cual es el
+     * comportamiento deseado: un cambio de tipo exige reindex explicito).</p>
+     */
+    private void ensureMapping(IndexSpec spec) throws Exception {
+        try (InputStream is = new ClassPathResource(spec.mappingPath).getInputStream()) {
+            JsonNode mappings = MAPPER.readTree(is).get("mappings");
+            if (mappings == null) return;
+
+            try (Reader reader = new StringReader(MAPPER.writeValueAsString(mappings))) {
+                client.indices().putMapping(b -> b.index(spec.indexName).withJson(reader));
+            }
+            log.debug("Mapping de {} sincronizado desde {}", spec.indexName, spec.mappingPath);
+        } catch (Exception ex) {
+            // No abortamos el arranque: el indice sigue sirviendo con su mapping
+            // previo. Se registra fuerte porque un campo nuevo no indexado deja
+            // consultas silenciosamente vacias.
+            log.error("No se pudo actualizar el mapping de {}: {}", spec.indexName, ex.getMessage());
         }
     }
 

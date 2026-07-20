@@ -8,5 +8,6 @@ import java.util.UUID;
 public record BranchCompensationRequest(
         @NotNull UUID branchId,
         @NotBlank String compensationType,
-        @NotNull BigDecimal compensationValue
+        @NotNull BigDecimal compensationValue,
+        BigDecimal salaryBase
 ) {}

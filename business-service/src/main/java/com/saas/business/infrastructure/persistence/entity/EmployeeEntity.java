@@ -23,6 +23,8 @@ public class EmployeeEntity extends BaseEntity {
     // cargo y fecha llegan despues (APK del empleado o edicion del dueño).
     @JdbcTypeCode(SqlTypes.CHAR) @Column(name = "PositionId", length = 36)
     private UUID positionId;
+    @JdbcTypeCode(SqlTypes.CHAR) @Column(name = "SpecialtyId", length = 36)
+    private UUID specialtyId;
     @Column(name = "EmployeeCode", length = 40) private String employeeCode;
     @Column(name = "HireDate") private LocalDate hireDate;
     @Column(name = "TerminationDate") private LocalDate terminationDate;

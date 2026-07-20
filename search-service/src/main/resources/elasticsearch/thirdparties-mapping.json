@@ -21,6 +21,7 @@
       "createdAt":      { "type": "date" },
       "updatedAt":      { "type": "date" },
       "docVersion":     { "type": "long" },
+      "userId":         { "type": "keyword" },
       "documentTypeId": { "type": "keyword" },
       "documentNumber": { "type": "keyword" },
       "fullName":       {
@@ -30,6 +31,7 @@
       },
       "firstName":      { "type": "text", "analyzer": "spanish_text" },
       "firstLastName":  { "type": "text", "analyzer": "spanish_text" },
+      "photoUrl":       { "type": "keyword", "index": false },
       "genderId":       { "type": "keyword" },
       "enabled":        { "type": "boolean" },
       "contacts":       { "type": "object", "enabled": false },

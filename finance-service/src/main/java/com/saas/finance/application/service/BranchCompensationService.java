@@ -25,6 +25,7 @@ public class BranchCompensationService extends GenericCrudService<BranchCompensa
     @Override protected void applyChanges(BranchCompensation e, BranchCompensation i) {
         if (i.getCompensationType() != null) e.setCompensationType(i.getCompensationType());
         if (i.getCompensationValue() != null) e.setCompensationValue(i.getCompensationValue());
+        e.setSalaryBase(i.getSalaryBase()); // nullable a proposito: al cambiar a un tipo no-hibrido se limpia
     }
 
     @Override @Transactional

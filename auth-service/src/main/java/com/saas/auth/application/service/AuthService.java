@@ -12,6 +12,7 @@ import com.saas.auth.domain.port.in.IAuthUseCase;
 import com.saas.auth.domain.port.in.IUserUseCase;
 import com.saas.auth.domain.port.out.IRefreshTokenRepositoryPort;
 import com.saas.auth.domain.port.out.IUserRepositoryPort;
+import com.saas.auth.infrastructure.client.SearchServiceClient;
 import com.saas.auth.infrastructure.client.ThirdPartyServiceClient;
 import com.saas.auth.infrastructure.security.BusinessResolver;
 import com.saas.auth.infrastructure.security.JwtBlacklistService;
@@ -48,6 +49,7 @@ public class AuthService implements IAuthUseCase {
     private final UserMapper userMapper;
     private final BusinessResolver businessResolver;
     private final ThirdPartyServiceClient thirdPartyClient;
+    private final SearchServiceClient searchClient;
 
     /**
      * Id fijo y conocido del rol {@code OWNER} (sembrado en la migración V1).
@@ -158,19 +160,39 @@ public class AuthService implements IAuthUseCase {
 
     /**
      * Resuelve la cuenta por numero de documento (solo identificadores 100%
-     * numericos de tamano plausible). NUNCA rompe el login: ante cualquier
-     * fallo del S2S devuelve empty y el flujo termina en credenciales invalidas.
+     * numericos de tamano plausible). Va primero al read model de Elasticsearch
+     * y solo cae a thirdparty-service si ES no lo resuelve (documento recien
+     * creado y aun no proyectado). NUNCA rompe el login: ante cualquier fallo
+     * devuelve empty y el flujo termina en credenciales invalidas.
      */
     private Optional<User> findByDocumentNumber(String identifier) {
         String id = identifier == null ? "" : identifier.trim();
         if (!id.matches("\\d{5,20}")) return Optional.empty();
+
+        UUID userId = resolveUserIdFromSearch(id);
+        if (userId == null) userId = resolveUserIdFromThirdParty(id);
+        return userId == null ? Optional.empty() : userRepo.findById(userId);
+    }
+
+    /** Read model (rapido). Null si ES no responde o no lo tiene proyectado. */
+    private UUID resolveUserIdFromSearch(String documentNumber) {
         try {
-            ThirdPartyServiceClient.UserByDocumentDto dto = thirdPartyClient.userByDocument(id);
-            if (dto == null || dto.userId() == null) return Optional.empty();
-            return userRepo.findById(dto.userId());
+            SearchServiceClient.UserByDocumentDto dto = searchClient.userByDocument(documentNumber);
+            return dto == null ? null : dto.userId();
         } catch (Exception ex) {
-            log.debug("Login por documento sin match para '{}': {}", id, ex.getMessage());
-            return Optional.empty();
+            log.debug("ES no resolvio el documento '{}', respaldo a thirdparty: {}", documentNumber, ex.getMessage());
+            return null;
+        }
+    }
+
+    /** Fuente de verdad (respaldo). */
+    private UUID resolveUserIdFromThirdParty(String documentNumber) {
+        try {
+            ThirdPartyServiceClient.UserByDocumentDto dto = thirdPartyClient.userByDocument(documentNumber);
+            return dto == null ? null : dto.userId();
+        } catch (Exception ex) {
+            log.debug("Login por documento sin match para '{}': {}", documentNumber, ex.getMessage());
+            return null;
         }
     }
 

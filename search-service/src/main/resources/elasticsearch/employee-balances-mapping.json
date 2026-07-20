@@ -1,0 +1,26 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s"
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id":               { "type": "keyword" },
+      "businessId":       { "type": "keyword" },
+      "createdAt":        { "type": "date" },
+      "updatedAt":        { "type": "date" },
+      "docVersion":       { "type": "long" },
+      "branchId":         { "type": "keyword" },
+      "employeeId":       { "type": "keyword" },
+      "thirdPartyId":     { "type": "keyword" },
+      "userId":           { "type": "keyword" },
+      "amountAccrued":    { "type": "double" },
+      "amountPaid":       { "type": "double" },
+      "balance":          { "type": "double" },
+      "currency":         { "type": "keyword" },
+      "lastCalculatedAt": { "type": "keyword" }
+    }
+  }
+}

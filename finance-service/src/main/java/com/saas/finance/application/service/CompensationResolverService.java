@@ -47,7 +47,7 @@ public class CompensationResolverService implements ICompensationResolverUseCase
         if (emp.isPresent()) {
             EmployeeCompensation c = emp.get();
             return Optional.of(build(CompensationSource.EMPLOYEE, employeeId,
-                    c.getCompensationType(), c.getCompensationValue(), c.getValidFrom(), c.getValidTo()));
+                    c.getCompensationType(), c.getCompensationValue(), c.getSalaryBase(), c.getValidFrom(), c.getValidTo()));
         }
 
         // 2) Nivel sede (si el caller aporto la sede)
@@ -57,7 +57,7 @@ public class CompensationResolverService implements ICompensationResolverUseCase
             if (branch.isPresent()) {
                 BranchCompensation c = branch.get();
                 return Optional.of(build(CompensationSource.BRANCH, branchId,
-                        c.getCompensationType(), c.getCompensationValue(), c.getValidFrom(), c.getValidTo()));
+                        c.getCompensationType(), c.getCompensationValue(), c.getSalaryBase(), c.getValidFrom(), c.getValidTo()));
             }
         }
 
@@ -68,7 +68,7 @@ public class CompensationResolverService implements ICompensationResolverUseCase
             if (business.isPresent()) {
                 BusinessCompensation c = business.get();
                 return Optional.of(build(CompensationSource.BUSINESS, businessId,
-                        c.getCompensationType(), c.getCompensationValue(), c.getValidFrom(), c.getValidTo()));
+                        c.getCompensationType(), c.getCompensationValue(), c.getSalaryBase(), c.getValidFrom(), c.getValidTo()));
             }
         }
 
@@ -77,10 +77,10 @@ public class CompensationResolverService implements ICompensationResolverUseCase
     }
 
     private EffectiveCompensation build(CompensationSource source, UUID sourceId, String type,
-                                        BigDecimal value, LocalDateTime validFrom, LocalDateTime validTo) {
+                                        BigDecimal value, BigDecimal salaryBase, LocalDateTime validFrom, LocalDateTime validTo) {
         return EffectiveCompensation.builder()
                 .source(source).sourceId(sourceId)
-                .compensationType(type).compensationValue(value)
+                .compensationType(type).compensationValue(value).salaryBase(salaryBase)
                 .validFrom(validFrom).validTo(validTo)
                 .build();
     }

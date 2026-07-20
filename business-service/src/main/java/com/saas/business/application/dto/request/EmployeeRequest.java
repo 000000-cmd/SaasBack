@@ -9,6 +9,7 @@ public record EmployeeRequest(
         @NotNull UUID thirdPartyId,
         @NotNull UUID branchId,
         @NotNull UUID positionId,
+        UUID specialtyId,
         @Size(max = 40) String employeeCode,
         @NotNull LocalDate hireDate,
         LocalDate terminationDate,

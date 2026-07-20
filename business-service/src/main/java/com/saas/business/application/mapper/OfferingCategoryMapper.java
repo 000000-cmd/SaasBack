@@ -23,4 +23,9 @@ public interface OfferingCategoryMapper {
     @Mapping(target = "auditDate", ignore = true) @Mapping(target = "createdDate", ignore = true)
     @Mapping(target = "businessId", ignore = true)
     void updateDomain(OfferingCategoryRequest request, @MappingTarget OfferingCategory domain);
+
+    @AfterMapping
+    default void applyDefaults(@MappingTarget OfferingCategory domain) {
+        if (domain.getDisplayOrder() == null) domain.setDisplayOrder(0);
+    }
 }

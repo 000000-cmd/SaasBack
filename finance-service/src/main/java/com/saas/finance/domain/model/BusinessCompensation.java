@@ -14,6 +14,8 @@ public class BusinessCompensation extends BaseDomain {
     private String compensationType; // SALARY_ONLY|SALARY_PLUS_COMMISSION|SALARY_PLUS_SERVICE_PERCENT|SERVICE_PERCENT_ONLY
     // Valor unico condicionado por compensationType (monto fijo o porcentaje segun el tipo).
     private BigDecimal compensationValue;
+    // Solo tipos hibridos (salario + %): salario base que acompana al %. Null en el resto.
+    private BigDecimal salaryBase;
     private LocalDateTime validFrom;
     private LocalDateTime validTo;
 }

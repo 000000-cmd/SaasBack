@@ -26,11 +26,14 @@ import java.util.stream.Stream;
 public class ThirdPartyEventPayload {
 
     private UUID id;
+    /** Cuenta vinculada. Indexado para resolver persona<->usuario desde ES. */
+    private UUID userId;
     private UUID documentTypeId;
     private String documentNumber;
     private String firstName;
     private String firstLastName;
     private String fullName;
+    private String photoUrl;
     private UUID genderId;
     private Boolean enabled;
 
@@ -73,11 +76,13 @@ public class ThirdPartyEventPayload {
                                               List<ThirdPartyAddress> addresses) {
         return ThirdPartyEventPayload.builder()
                 .id(t.getId())
+                .userId(t.getUserId())
                 .documentTypeId(t.getDocumentTypeId())
                 .documentNumber(t.getDocumentNumber())
                 .firstName(t.getFirstName())
                 .firstLastName(t.getFirstLastName())
                 .fullName(buildFullName(t))
+                .photoUrl(t.getPhotoUrl())
                 .genderId(t.getGenderId())
                 .enabled(t.getEnabled())
                 .contacts(contacts.stream()

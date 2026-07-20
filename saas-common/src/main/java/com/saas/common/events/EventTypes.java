@@ -40,6 +40,10 @@ public final class EventTypes {
     public static final String THIRDPARTY_UPDATED = "thirdparty.updated";
     public static final String THIRDPARTY_DELETED = "thirdparty.deleted";
 
+    /** Saldo por cobrar del empleado (read model materializado en finance → ES). */
+    public static final String FINANCE_BALANCE_UPDATED = "finance.balance.updated";
+    public static final String FINANCE_BALANCE_DELETED = "finance.balance.deleted";
+
     /**
      * Evento dedicado de auditoria. Lo emite {@link com.saas.common.audit.AuditEmitter}
      * desde los servicios base CRUD. El relay enruta todo lo que empiece por

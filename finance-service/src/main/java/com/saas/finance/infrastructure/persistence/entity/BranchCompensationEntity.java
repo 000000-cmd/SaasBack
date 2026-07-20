@@ -18,6 +18,7 @@ public class BranchCompensationEntity extends BaseEntity {
     private UUID branchId;
     @Column(name = "CompensationType", length = 40, nullable = false) private String compensationType;
     @Column(name = "CompensationValue", precision = 12, scale = 2, nullable = false) private BigDecimal compensationValue;
+    @Column(name = "SalaryBase", precision = 12, scale = 2) private BigDecimal salaryBase;
     @Column(name = "ValidFrom", nullable = false) private LocalDateTime validFrom;
     @Column(name = "ValidTo") private LocalDateTime validTo;
 }

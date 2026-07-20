@@ -27,6 +27,10 @@ import java.util.UUID;
 )
 public class ThirdPartyDocument extends BaseDocument {
 
+    /** Cuenta vinculada: permite resolver persona<->usuario sin pegarle a la BD. */
+    @Field(type = FieldType.Keyword)
+    private UUID userId;
+
     @Field(type = FieldType.Keyword)
     private String documentNumber;
 
@@ -41,6 +45,10 @@ public class ThirdPartyDocument extends BaseDocument {
 
     @Field(type = FieldType.Text)
     private String firstLastName;
+
+    /** Foto de perfil (la sube el empleado desde el APK). Para tarjetas de persona. */
+    @Field(type = FieldType.Keyword, index = false)
+    private String photoUrl;
 
     /** Ids para filtrar (sin desnormalizar: el nombre se resuelve en el front). */
     @Field(type = FieldType.Keyword)

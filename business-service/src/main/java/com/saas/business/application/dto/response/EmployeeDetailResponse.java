@@ -9,6 +9,6 @@ import java.util.UUID;
  */
 public record EmployeeDetailResponse(
         UUID id, UUID thirdPartyId, String personName, String photoUrl,
-        UUID branchId, UUID positionId, String employeeCode,
+        UUID branchId, UUID positionId, UUID specialtyId, String employeeCode,
         LocalDate hireDate, LocalDate terminationDate, UUID statusId, Boolean enabled
 ) {}

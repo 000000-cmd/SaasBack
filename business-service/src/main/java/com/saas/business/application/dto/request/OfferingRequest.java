@@ -7,6 +7,7 @@ import java.util.UUID;
 public record OfferingRequest(
         @NotNull UUID businessId,
         UUID categoryId,
+        UUID specialtyId,
         @NotBlank @Size(max = 160) String name,
         @Size(max = 500) String description,
         @NotNull @Positive Integer durationMinutes,

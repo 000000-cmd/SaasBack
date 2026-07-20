@@ -22,4 +22,6 @@ public class IndexNames {
 
     public String thirdParties() { return "third_parties"; }
 
+    public String employeeBalances() { return "employee_balances"; }
+
 }

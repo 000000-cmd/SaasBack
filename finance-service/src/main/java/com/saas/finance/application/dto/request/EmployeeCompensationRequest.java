@@ -8,5 +8,6 @@ import java.util.UUID;
 public record EmployeeCompensationRequest(
         @NotNull UUID employeeId,
         @NotBlank String compensationType,
-        @NotNull BigDecimal compensationValue
+        @NotNull BigDecimal compensationValue,
+        BigDecimal salaryBase
 ) {}

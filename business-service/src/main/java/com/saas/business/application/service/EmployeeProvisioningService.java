@@ -7,6 +7,7 @@ import com.saas.business.domain.model.Employee;
 import com.saas.business.domain.port.in.IBranchUseCase;
 import com.saas.business.domain.port.in.IEmployeeUseCase;
 import com.saas.business.infrastructure.client.AuthClient;
+import com.saas.business.infrastructure.client.FinanceClient;
 import com.saas.business.infrastructure.client.ThirdPartyClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class EmployeeProvisioningService {
     private final IEmployeeUseCase employeeUseCase;
     private final AuthClient authClient;
     private final ThirdPartyClient thirdPartyClient;
+    private final FinanceClient financeClient;
 
     @Transactional
     public EmployeeProvisionResponse provision(EmployeeProvisionRequest r) {
@@ -62,6 +64,15 @@ public class EmployeeProvisioningService {
                 .thirdPartyId(person.id())
                 .branchId(branch.getId())
                 .build());
+
+        // 5) Saldo por cobrar en 0 (materializado + proyectado a ES). Tolerante:
+        //    si finance no responde, el saldo se creará en la primera consulta/cálculo.
+        try {
+            financeClient.ensureBalance(new FinanceClient.EnsureBalanceRequest(
+                    employee.getId(), branch.getBusinessId(), branch.getId(), person.id(), account.id()));
+        } catch (Exception ex) {
+            log.warn("No se pudo inicializar el saldo del empleado {}: {}", employee.getId(), ex.getMessage());
+        }
 
         log.info("Empleado (shell) aprovisionado: employeeId={} thirdPartyId={} userId={}",
                 employee.getId(), person.id(), account.id());

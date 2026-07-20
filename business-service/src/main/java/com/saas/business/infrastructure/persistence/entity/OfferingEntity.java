@@ -17,6 +17,8 @@ public class OfferingEntity extends BaseEntity {
     private UUID businessId;
     @JdbcTypeCode(SqlTypes.CHAR) @Column(name = "CategoryId", length = 36)
     private UUID categoryId;
+    @JdbcTypeCode(SqlTypes.CHAR) @Column(name = "SpecialtyId", length = 36)
+    private UUID specialtyId;
     @Column(name = "Name", length = 160, nullable = false) private String name;
     @Column(name = "Description", length = 500) private String description;
     @Column(name = "DurationMinutes", nullable = false) private Integer durationMinutes;

@@ -12,6 +12,7 @@ import java.util.UUID;
 public class Offering extends BaseDomain implements ITenantOwned {
     private UUID businessId;
     private UUID categoryId;
+    private UUID specialtyId;
     private String name;
     private String description;
     private Integer durationMinutes;

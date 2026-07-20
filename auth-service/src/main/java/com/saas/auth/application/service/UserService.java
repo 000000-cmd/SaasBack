@@ -93,7 +93,13 @@ public class UserService extends GenericCrudService<User, UUID> implements IUser
         User user = getById(userId);
         if (Boolean.FALSE.equals(user.getIsFirstLogin())) return;
         user.setIsFirstLogin(false);
-        update(userId, user);
+        // Se persiste por el PUERTO, no por el update() generico: ese aplica
+        // solo la lista blanca de campos editables por el cliente (applyChanges),
+        // que NO incluye isFirstLogin. Pasando por ahi el cambio se descartaba en
+        // silencio y el endpoint respondia 200 con el indicador intacto, asi que
+        // la bienvenida reaparecia en cada ingreso.
+        userRepo.update(user);
+        log.info("Bienvenida marcada como vista: userId={}", userId);
     }
 
     @Override

@@ -17,6 +17,7 @@ public class EffectiveCompensation {
     private final UUID sourceId;
     private final String compensationType;
     private final BigDecimal compensationValue;
+    private final BigDecimal salaryBase;
     private final LocalDateTime validFrom;
     private final LocalDateTime validTo;
 }

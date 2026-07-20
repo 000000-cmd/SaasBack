@@ -1,6 +1,7 @@
 package com.saas.finance.application.service;
 
 import com.saas.finance.domain.model.EmployeeCompensation;
+import com.saas.finance.domain.port.in.IEmployeeBalanceUseCase;
 import com.saas.finance.domain.port.in.IEmployeeCompensationUseCase;
 import com.saas.finance.domain.port.out.IEmployeeCompensationRepositoryPort;
 import com.saas.common.service.GenericCrudService;
@@ -15,16 +16,27 @@ import java.util.UUID;
 public class EmployeeCompensationService extends GenericCrudService<EmployeeCompensation, UUID>
         implements IEmployeeCompensationUseCase {
     private final IEmployeeCompensationRepositoryPort repo;
-    public EmployeeCompensationService(IEmployeeCompensationRepositoryPort repo) { super(repo); this.repo = repo; }
+    private final IEmployeeBalanceUseCase balance;
+    public EmployeeCompensationService(IEmployeeCompensationRepositoryPort repo, IEmployeeBalanceUseCase balance) {
+        super(repo); this.repo = repo; this.balance = balance;
+    }
     @Override protected String getResourceName() { return "Compensacion de empleado"; }
 
     @Override protected void onBeforeCreate(EmployeeCompensation e) {
         if (e.getValidFrom() == null) e.setValidFrom(LocalDateTime.now());
         e.setValidTo(null);
     }
+
+    // La compensacion es una entrada del calculo del saldo: al cambiarla,
+    // refrescar el saldo del empleado (que se reproyecta a ES). No-op si el
+    // empleado aun no tiene fila de saldo.
+    @Override protected void onAfterCreate(EmployeeCompensation saved) {
+        if (saved.getEmployeeId() != null) balance.recalculate(saved.getEmployeeId());
+    }
     @Override protected void applyChanges(EmployeeCompensation e, EmployeeCompensation i) {
         if (i.getCompensationType() != null) e.setCompensationType(i.getCompensationType());
         if (i.getCompensationValue() != null) e.setCompensationValue(i.getCompensationValue());
+        e.setSalaryBase(i.getSalaryBase()); // nullable a proposito: al cambiar a un tipo no-hibrido se limpia
     }
 
     @Override @Transactional
