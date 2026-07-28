@@ -31,6 +31,7 @@ public class MenuService extends CodeCrudService<Menu, UUID> implements IMenuUse
         if (incoming.getIcon() != null)         existing.setIcon(incoming.getIcon());
         if (incoming.getRoute() != null)        existing.setRoute(incoming.getRoute());
         if (incoming.getDisplayOrder() != null) existing.setDisplayOrder(incoming.getDisplayOrder());
+        if (incoming.getSubmenu() != null)    existing.setSubmenu(incoming.getSubmenu());
         // parentId puede ser explicitamente null (mover a root) -> siempre lo aplico
         existing.setParentId(incoming.getParentId());
     }
@@ -38,6 +39,9 @@ public class MenuService extends CodeCrudService<Menu, UUID> implements IMenuUse
     @Override
     protected void onBeforeCreate(Menu menu) {
         super.onBeforeCreate(menu);
+        // La columna es NOT NULL y el campo es opcional en el request: quien no
+        // dice nada esta creando un menu normal, que es lo de siempre.
+        if (menu.getSubmenu() == null) menu.setSubmenu(false);
         validateParent(menu, null);
     }
 
@@ -48,6 +52,11 @@ public class MenuService extends CodeCrudService<Menu, UUID> implements IMenuUse
     }
 
     private void validateParent(Menu menu, UUID currentId) {
+        // Un submenu se dibuja DENTRO del nav de su padre: sin padre no tiene
+        // donde pintarse, asi que el padre deja de ser opcional.
+        if (menu.submenu() && menu.getParentId() == null) {
+            throw new BusinessException("Un submenu necesita un menu padre");
+        }
         if (menu.getParentId() == null) return;
         if (menu.getParentId().equals(currentId)) {
             throw new BusinessException("Un menu no puede ser padre de si mismo");

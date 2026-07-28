@@ -4,10 +4,8 @@ import com.saas.common.dto.ApiResponse;
 import com.saas.search.application.dto.search.SearchCriteria;
 import com.saas.search.application.dto.search.SearchRequest;
 import com.saas.search.application.dto.search.SearchResponse;
-import com.saas.search.application.service.search.RoleSearchService;
 import com.saas.search.application.service.search.ThirdPartySearchService;
 import com.saas.search.application.service.search.UserSearchService;
-import com.saas.search.domain.document.RoleDocument;
 import com.saas.search.domain.document.ThirdPartyDocument;
 import com.saas.search.domain.document.UserDocument;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +43,6 @@ import java.util.Map;
 public class SearchController {
 
     private final UserSearchService userSearch;
-    private final RoleSearchService roleSearch;
     private final ThirdPartySearchService thirdPartySearch;
 
     @PostMapping("/users")
@@ -67,23 +64,8 @@ public class SearchController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
-    @PostMapping("/roles")
-    public ResponseEntity<ApiResponse<SearchResponse<RoleDocument>>> searchRoles(@RequestBody SearchRequest req) {
-        Map<String, Object> filters = new HashMap<>();
-        if (req.enabled() != null) filters.put("enabled", req.enabled());
-
-        SearchCriteria criteria = SearchCriteria.builder()
-                .query(req.q())
-                .filters(filters)
-                .businessId(req.businessId())
-                .build();
-
-        String[] sortParts = parseSort(req.sort());
-        SearchResponse<RoleDocument> result = roleSearch.search(
-                criteria, req.pageOrDefault(), req.sizeOrDefault(), sortParts[0], sortParts[1]);
-
-        return ResponseEntity.ok(ApiResponse.success(result));
-    }
+    // Los roles no se buscan en Elastic: se leen de system-service, que es su
+    // fuente de verdad. Ver docs/elastic-que-va-y-que-no.md.
 
     @PostMapping("/third-parties")
     public ResponseEntity<ApiResponse<SearchResponse<ThirdPartyDocument>>> searchThirdParties(@RequestBody SearchRequest req) {

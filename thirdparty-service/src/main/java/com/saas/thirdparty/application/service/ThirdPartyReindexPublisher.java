@@ -1,6 +1,7 @@
 package com.saas.thirdparty.application.service;
 
 import com.saas.common.events.EventTypes;
+import com.saas.common.exception.ResourceNotFoundException;
 import com.saas.common.outbox.OutboxPublisher;
 import com.saas.thirdparty.application.dto.event.ThirdPartyEventPayload;
 import com.saas.thirdparty.domain.model.ThirdParty;
@@ -52,6 +53,13 @@ public class ThirdPartyReindexPublisher {
     /** Construye los payloads COMPLETOS de una página (para reindex-from-source). */
     public List<ThirdPartyEventPayload> buildPage(int page, int size) {
         return thirdPartyRepo.findAllPaged(page, size).stream().map(this::buildPayload).toList();
+    }
+
+    /** Payload COMPLETO de un solo tercero (para reindex puntual desde search-service). */
+    public ThirdPartyEventPayload buildOne(UUID thirdPartyId) {
+        return thirdPartyRepo.findById(thirdPartyId)
+                .map(this::buildPayload)
+                .orElseThrow(() -> new ResourceNotFoundException("Tercero", "id", thirdPartyId));
     }
 
     /** Documento completo del tercero: base + sus contactos + sus direcciones. */

@@ -99,4 +99,13 @@ public class EmployeeBalanceService implements IEmployeeBalanceUseCase {
 
     @Override @Transactional(readOnly = true)
     public Optional<EmployeeBalance> findByUser(UUID userId) { return repo.findByUserId(userId); }
+
+    @Override @Transactional(readOnly = true)
+    public java.util.List<EmployeeBalance> findAllPaged(int page, int size) { return repo.findAllPaged(page, size); }
+
+    @Override @Transactional(readOnly = true)
+    public long count() { return repo.count(); }
+
+    @Override @Transactional(readOnly = true)
+    public Optional<EmployeeBalance> findById(UUID id) { return repo.findById(id); }
 }

@@ -34,4 +34,7 @@ public interface AuthInternalClient {
 
     @GetMapping("/internal/users/count")
     Map<String, Long> countUsers();
+
+    @GetMapping("/internal/users/one/{id}")
+    JsonNode fetchUser(@org.springframework.web.bind.annotation.PathVariable("id") String id);
 }

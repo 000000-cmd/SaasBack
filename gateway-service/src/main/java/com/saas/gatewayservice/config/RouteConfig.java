@@ -22,6 +22,14 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 public class RouteConfig {
 
+    /**
+     * Clave de metadatos con la que Spring Cloud Gateway deja anular el
+     * {@code httpclient.response-timeout} global en una ruta concreta ({@code -1}
+     * = sin limite). La constante de la libreria es interna, asi que se declara
+     * aqui con su nombre exacto.
+     */
+    private static final String RESPONSE_TIMEOUT_ATTR = "response-timeout";
+
     @Value("${saas.gateway.services.auth-uri:lb://auth-service}")
     private String authUri;
 
@@ -90,6 +98,15 @@ public class RouteConfig {
                                 .setRateLimiter(defaultRateLimiter)
                                 .setKeyResolver(userKeyResolver)))
                         .uri(systemUri))
+                // El progreso del reindex es un stream (SSE) que queda abierto
+                // mientras dure el trabajo. Va ANTES de la ruta general de
+                // /search/** y sin el response-timeout global (30s), que lo
+                // cortaria a media faena; tampoco pasa por el rate limiter,
+                // porque al reconectar varias veces seguidas se autobloquearia.
+                .route("search-stream", r -> r
+                        .path("/search/admin/reindex/stream")
+                        .metadata(RESPONSE_TIMEOUT_ATTR, -1)
+                        .uri(searchUri))
                 .route("search", r -> r
                         .path("/search/**")
                         .filters(f -> f.requestRateLimiter(c -> c

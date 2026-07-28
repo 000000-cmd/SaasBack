@@ -254,6 +254,44 @@ docker compose up -d mysql redis kafka-1 es-01
 >
 > **Apagar la infra**: `docker compose stop mysql redis kafka-1 kafka-2 kafka-3 es-01` (conserva datos) · `docker compose down -v` (borra volúmenes/datos).
 
+### Front: las dos entradas
+
+El front es **una sola aplicación** que se sirve desde **dos puertos distintos**,
+y el puerto decide qué entrada se abre. Hay que levantar los dos servidores, cada
+uno en su terminal, desde `C:/SaasFront`:
+
+```bash
+npm start
+```
+
+```bash
+npm run start:admin
+```
+
+| URL | Qué abre |
+|---|---|
+| `http://localhost:4200` | Landing del producto (venta del SaaS) |
+| `http://<slug>.localhost:4200` | **Página pública del negocio** cuyo slug es el subdominio |
+| `http://localhost:4201` | **Login de administradores** del sistema (la raíz entra directa) |
+
+El subdominio es el `slug` que el negocio tiene en `business_domain`. Por ejemplo,
+si el slug es `barber`, su página está en `http://barber.localhost:4200`. No hace
+falta tocar el archivo `hosts`: los navegadores resuelven cualquier `*.localhost`
+a 127.0.0.1 por sí solos.
+
+> **Si cambias de rama o tocas `angular.json`, reinicia los dos servidores.** El
+> recarga-en-caliente cubre los archivos de código, pero NO la configuración del
+> servidor de desarrollo: sin reiniciar, `<slug>.localhost:4200` sigue pintando
+> la landing del producto en vez de la del negocio.
+
+El `/login/admin` por ruta ya no existe en el puerto 4200: allí redirige al login
+del dueño. En producción cada entrada va en su propio host; en desarrollo el
+bundle es el mismo en los dos puertos, así que esto **separa** el acceso, no lo
+aísla — la barrera real siguen siendo el JWT y el guard de rol.
+
+Los orígenes permitidos por CORS (`saas-config-repo/gateway-service.properties`)
+ya incluyen `*.localhost:4200`, `localhost:4201` y `localhost:3000` (APK web).
+
 ### Smoke test rápido
 
 ```bash
@@ -266,8 +304,9 @@ TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
 # Ver mis menús
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/system/menus/me | jq
 
-# Buscar roles en Elasticsearch
-curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/search/roles?q=admin" | jq
+# Buscar terceros en Elasticsearch (los filtros van por el CUERPO, con POST)
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"q":"ana","page":0,"size":20}' http://localhost:8080/search/third-parties | jq
 ```
 
 ---

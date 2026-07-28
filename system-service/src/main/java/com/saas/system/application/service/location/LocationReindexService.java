@@ -56,6 +56,30 @@ public class LocationReindexService {
         return neighborhoodService.findAllPaged(page, size).stream().map(this::toNeighborhoodPayload).toList();
     }
 
+    // ==================== PUNTUAL ====================
+
+    /**
+     * Payload de UNA localizacion, para el reindex puntual. Las cuatro tablas
+     * comparten un solo indice en Elastic, asi que el id se busca por nivel
+     * hasta encontrarlo: quien reindexa desde la pantalla de gestion solo tiene
+     * el id del documento, no sabe de que nivel es.
+     */
+    public LocationReindexPayload findById(UUID id) {
+        Country country = safe(() -> countryService.getById(id));
+        if (country != null) return toCountryPayload(country);
+
+        Department department = safe(() -> departmentService.getById(id));
+        if (department != null) return toDepartmentPayload(department);
+
+        Municipality municipality = safe(() -> municipalityService.getById(id));
+        if (municipality != null) return toMunicipalityPayload(municipality);
+
+        Neighborhood neighborhood = safe(() -> neighborhoodService.getById(id));
+        if (neighborhood != null) return toNeighborhoodPayload(neighborhood);
+
+        throw new ResourceNotFoundException("Localizacion", "id", id);
+    }
+
     // ==================== MAPPERS ====================
 
     private LocationReindexPayload toCountryPayload(Country c) {

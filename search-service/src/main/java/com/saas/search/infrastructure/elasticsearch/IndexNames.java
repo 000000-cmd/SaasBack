@@ -16,8 +16,6 @@ public class IndexNames {
 
     public String users() { return "users"; }
 
-    public String roles() { return "roles"; }
-
     public String locations() { return "locations"; }
 
     public String thirdParties() { return "third_parties"; }

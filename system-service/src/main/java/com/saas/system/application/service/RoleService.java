@@ -1,9 +1,6 @@
 package com.saas.system.application.service;
 
-import com.saas.common.events.EventTypes;
-import com.saas.common.outbox.OutboxPublisher;
 import com.saas.common.service.CodeCrudService;
-import com.saas.system.application.dto.event.RoleEventPayload;
 import com.saas.system.domain.model.Role;
 import com.saas.system.domain.port.in.IRoleUseCase;
 import com.saas.system.domain.port.out.IRoleRepositoryPort;
@@ -18,12 +15,10 @@ import java.util.UUID;
 public class RoleService extends CodeCrudService<Role, UUID> implements IRoleUseCase {
 
     private final IRoleRepositoryPort roleRepo;
-    private final OutboxPublisher  outboxPublisher;
 
-    public RoleService(IRoleRepositoryPort repo, OutboxPublisher publisher) {
+    public RoleService(IRoleRepositoryPort repo) {
         super(repo);
         this.roleRepo = repo;
-        this.outboxPublisher = publisher;
     }
 
     @Override protected String getResourceName() { return "Rol"; }
@@ -41,37 +36,7 @@ public class RoleService extends CodeCrudService<Role, UUID> implements IRoleUse
         return ids == null || ids.isEmpty() ? List.of() : roleRepo.findAllByIds(ids);
     }
 
-    // ===========================================================
-    // Hooks que emiten eventos al outbox (Fase 5)
-    // ===========================================================
-
-    @Override
-    protected void onAfterCreate(Role saved) {
-        outboxPublisher.publish(
-                EventTypes.ROLE_CREATED,
-                null,
-                "role",
-                saved.getId(),
-                RoleEventPayload.from(saved));
-    }
-
-    @Override
-    protected void onAfterUpdate(Role existing, Role updated) {
-        outboxPublisher.publish(
-                EventTypes.ROLE_UPDATED,
-                null,
-                "role",
-                updated.getId(),
-                RoleEventPayload.from(updated));
-    }
-
-    @Override
-    protected void onAfterDelete(UUID id, Role deletedSnapshot) {
-        outboxPublisher.publish(
-                EventTypes.ROLE_DELETED,
-                null,
-                "role",
-                id,
-                RoleEventPayload.from(deletedSnapshot));
-    }
+    // Los roles YA NO se proyectan a Elasticsearch: son media docena de filas
+    // fijas, sin busqueda de texto ni join que evitar. El indice solo anadia una
+    // via de desincronizacion, asi que se retiro junto con sus eventos.
 }

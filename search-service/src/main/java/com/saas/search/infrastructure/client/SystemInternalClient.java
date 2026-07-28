@@ -3,6 +3,7 @@ package com.saas.search.infrastructure.client;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
@@ -21,12 +22,7 @@ import java.util.Map;
 )
 public interface SystemInternalClient {
 
-    // -------- roles --------
-    @GetMapping("/internal/roles/all")
-    List<JsonNode> fetchRoles(@RequestParam("page") int page, @RequestParam("size") int size);
-
-    @GetMapping("/internal/roles/count")
-    Map<String, Long> countRoles();
+    // Roles: sin indice en Elastic, no hay nada que traer desde aqui.
 
     // -------- locations (4 niveles, mismo alias 'locations' en ES) --------
     @GetMapping("/internal/locations/countries/all")
@@ -52,4 +48,8 @@ public interface SystemInternalClient {
 
     @GetMapping("/internal/locations/neighborhoods/count")
     Map<String, Long> countNeighborhoods();
+
+    /** Una localizacion por id; system resuelve en cual de los 4 niveles vive. */
+    @GetMapping("/internal/locations/one/{id}")
+    JsonNode fetchLocation(@PathVariable("id") String id);
 }

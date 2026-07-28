@@ -43,7 +43,6 @@ public class IndexBootstrap {
     /** Especificacion declarativa de los indices a crear. */
     private static final List<IndexSpec> SPECS = List.of(
             new IndexSpec("users",     "users_v1",     "elasticsearch/users-mapping.json"),
-            new IndexSpec("roles",     "roles_v1",     "elasticsearch/roles-mapping.json"),
             new IndexSpec("locations", "locations_v1", "elasticsearch/locations-mapping.json"),
             new IndexSpec("third_parties", "third_parties_v1", "elasticsearch/thirdparties-mapping.json"),
             new IndexSpec("employee_balances", "employee_balances_v1", "elasticsearch/employee-balances-mapping.json")

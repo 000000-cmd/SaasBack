@@ -44,4 +44,8 @@ public class MenuEntity extends BaseEntity {
 
     @Column(name = "DisplayOrder", nullable = false)
     private Integer displayOrder;
+
+    /** true = se pinta en el nav secundario del padre, no en el menu lateral. */
+    @Column(name = "IsSubmenu", nullable = false)
+    private Boolean submenu;
 }

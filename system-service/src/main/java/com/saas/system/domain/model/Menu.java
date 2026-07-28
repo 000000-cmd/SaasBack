@@ -34,7 +34,18 @@ public class Menu extends BaseDomain implements ICodeable {
     private UUID parentId;
     private Integer displayOrder;
 
+    /**
+     * Marca el menu como submenu: en vez de ocupar un carril del menu lateral,
+     * se dibuja en el nav secundario de su padre. Exige {@code parentId} — un
+     * submenu sin padre no tiene donde pintarse.
+     */
+    private Boolean submenu;
+
     public boolean isRoot() {
         return parentId == null;
+    }
+
+    public boolean submenu() {
+        return Boolean.TRUE.equals(submenu);
     }
 }

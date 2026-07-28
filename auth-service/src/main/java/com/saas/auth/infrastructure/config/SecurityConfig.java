@@ -33,6 +33,11 @@ public class SecurityConfig {
                         // el servlet antes de que llegue aqui). Por eso son /login y /refresh,
                         // no /auth/login. La URL publica sigue siendo /auth/login.
                         .requestMatchers("/login", "/refresh", "/register-owner", "/exists").permitAll()
+                        // Cerrar sesion no puede depender de tener la sesion viva: si el access
+                        // token ya vencio, exigir autenticacion convertia el logout en un
+                        // 401 -> refresh -> reintento. Solo revoca el refresh token que quien
+                        // llama ya trae en el cuerpo, asi que no hay nada que abrir.
+                        .requestMatchers("/logout").permitAll()
                         .requestMatchers("/actuator/**", "/api/info", "/api/version").permitAll()
                         // Endpoints S2S (consumidos por search-service via Feign para reindex).
                         // No traversed por gateway -- la red interna los protege.

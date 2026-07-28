@@ -11,7 +11,7 @@ import java.util.List;
  * <p>Calcula automaticamente {@code totalPages} y {@code hasNext} a partir
  * de {@code totalHits}, {@code page} y {@code size}.
  *
- * @param <T> tipo de documento (UserDocument, RoleDocument, etc.)
+ * @param <T> tipo de documento (UserDocument, ThirdPartyDocument, etc.)
  */
 @Data
 @Builder

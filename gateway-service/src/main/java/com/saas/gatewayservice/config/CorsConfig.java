@@ -35,7 +35,17 @@ public class CorsConfig {
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public CorsWebFilter corsWebFilter(
-            @Value("${saas.cors.allowed-origins:http://localhost:4200,http://localhost:3000,http://127.0.0.1:4200}") String originsCsv,
+            // El front se sirve desde varias entradas y todas piden a este gateway:
+            //   :4200            producto
+            //   *.localhost:4200 pagina publica de un negocio (subdominio = slug)
+            //   :4201            panel de administracion
+            //   :3000            APK en modo web
+            // Son patrones, asi que el comodin del subdominio funciona igual que
+            // hara en produccion con https://*.midominio.com.
+            @Value("${saas.cors.allowed-origins:"
+                    + "http://localhost:4200,http://*.localhost:4200,"
+                    + "http://localhost:4201,http://*.localhost:4201,"
+                    + "http://localhost:3000,http://127.0.0.1:4200}") String originsCsv,
             @Value("${saas.cors.allow-credentials:true}") boolean allowCredentials,
             @Value("${saas.cors.max-age-seconds:3600}") long maxAge) {
 

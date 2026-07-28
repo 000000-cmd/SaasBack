@@ -1,6 +1,7 @@
 package com.saas.finance.domain.port.in;
 
 import com.saas.finance.domain.model.EmployeeBalance;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,4 +18,13 @@ public interface IEmployeeBalanceUseCase {
 
     Optional<EmployeeBalance> findByEmployee(UUID employeeId);
     Optional<EmployeeBalance> findByUser(UUID userId);
+
+    /** Un saldo por su id. Lo usa el reindex puntual desde la gestión de Elastic. */
+    Optional<EmployeeBalance> findById(UUID id);
+
+    /** Página de saldos para el reindex completo de search-service. */
+    List<EmployeeBalance> findAllPaged(int page, int size);
+
+    /** Total de saldos (lo usa el reindex para saber cuántos trae). */
+    long count();
 }

@@ -46,6 +46,12 @@ public class InternalController {
         return Map.of("total", useCase.count());
     }
 
+    /** Payload de UN tercero, para el reindex puntual desde la gestion de Elastic. */
+    @GetMapping("/third-parties/one/{id}")
+    public ThirdPartyEventPayload one(@PathVariable UUID id) {
+        return reindexPublisher.buildOne(id);
+    }
+
     /** Alta S2S de una persona (usada por el aprovisionamiento del negocio). */
     @PostMapping("/third-parties")
     public ThirdPartyResponse create(@Valid @RequestBody ThirdPartyRequest req) {

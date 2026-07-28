@@ -12,5 +12,7 @@ public record MenuRequest(
         @Size(max = 60) String icon,
         @Size(max = 200) String route,
         UUID parentId,
-        @NotNull Integer displayOrder
+        @NotNull Integer displayOrder,
+        /** true = el menu se dibuja en el nav secundario del padre. Exige parentId. */
+        Boolean submenu
 ) {}

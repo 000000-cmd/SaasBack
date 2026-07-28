@@ -60,6 +60,23 @@ public class MenuController {
         return ResponseEntity.ok(ApiResponse.success(buildTree(visible)));
     }
 
+    /**
+     * Arbol tal y como lo veria alguien con estos roles. Alimenta el
+     * previsualizador de la pantalla de menus.
+     *
+     * Reutiliza el mismo {@code getMenusForRoles} que sirve a {@code /me}: si la
+     * vista previa se calculara aparte, podria mostrar algo distinto de lo que
+     * el usuario acabaria viendo, que es justo lo que no puede pasar.
+     */
+    @GetMapping("/preview")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<MenuResponse>>> preview(@RequestParam(required = false) Set<UUID> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(List.of()));
+        }
+        return ResponseEntity.ok(ApiResponse.success(buildTree(menuUseCase.getMenusForRoles(roleIds))));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<MenuResponse>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(mapper.toResponse(menuUseCase.getById(id))));
@@ -133,7 +150,7 @@ public class MenuController {
                 .map(c -> withChildren(c, idx))
                 .toList();
         return new MenuResponse(r.id(), r.code(), r.name(), r.icon(), r.route(),
-                r.parentId(), r.displayOrder(), r.enabled(), r.visible(),
+                r.parentId(), r.displayOrder(), r.submenu(), r.enabled(), r.visible(),
                 r.createdDate(), r.auditDate(), kids);
     }
 }

@@ -7,6 +7,9 @@ public final class EventTypes {
     public static final String USER_DELETED = "user.deleted";
     public static final String USER_ROLES_CHANGED = "user.roles.changed";
 
+    // YA NO SE EMITEN: los roles dejaron de proyectarse a Elasticsearch (media
+    // docena de filas fijas, sin busqueda de texto). Se conservan porque los
+    // nombres de evento no se borran una vez publicados.
     public static final String ROLE_CREATED = "role.created";
     public static final String ROLE_UPDATED = "role.updated";
     public static final String ROLE_DELETED = "role.deleted";

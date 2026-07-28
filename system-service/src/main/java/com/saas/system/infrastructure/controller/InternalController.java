@@ -1,6 +1,5 @@
 package com.saas.system.infrastructure.controller;
 
-import com.saas.system.application.dto.event.RoleEventPayload;
 import com.saas.system.application.dto.event.location.LocationReindexPayload;
 import com.saas.system.application.service.location.LocationReindexService;
 import com.saas.system.domain.model.Role;
@@ -44,20 +43,7 @@ public class InternalController {
         return rolePermUseCase.getPermissionCodesByRoleId(roleId);
     }
 
-    @GetMapping("/roles/all")
-    public List<RoleEventPayload> listAllForReindex(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "500") int size) {
-        log.info("Reindex fetch roles: page={} size={}", page, size);
-        return roleUseCase.findAllPaged(page, size).stream()
-                .map(RoleEventPayload::from)
-                .toList();
-    }
-
-    @GetMapping("/roles/count")
-    public Map<String, Long> countRoles() {
-        return Map.of("total", roleUseCase.count());
-    }
+    // Los roles ya no se reindexan: no tienen indice en Elastic.
 
     // ==================== LOCATION (reindex) ====================
     // Cada nivel se sirve denormalizado para que el indexer downstream haga
@@ -113,5 +99,14 @@ public class InternalController {
     @GetMapping("/locations/neighborhoods/count")
     public Map<String, Long> countNeighborhoods() {
         return Map.of("total", locationReindex.countNeighborhoods());
+    }
+
+    /**
+     * Payload de UNA localizacion, para el reindex puntual. El nivel no viaja:
+     * las cuatro tablas comparten indice y el id es unico entre ellas.
+     */
+    @GetMapping("/locations/one/{id}")
+    public LocationReindexPayload oneLocationForReindex(@PathVariable UUID id) {
+        return locationReindex.findById(id);
     }
 }

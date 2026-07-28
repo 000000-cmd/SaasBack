@@ -23,4 +23,7 @@ public interface ThirdpartyInternalClient {
 
     @GetMapping("/internal/third-parties/count")
     Map<String, Long> countThirdParties();
+
+    @GetMapping("/internal/third-parties/one/{id}")
+    JsonNode fetchThirdParty(@org.springframework.web.bind.annotation.PathVariable("id") String id);
 }
