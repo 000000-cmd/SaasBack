@@ -1,9 +1,18 @@
 -- =====================================================================
 -- V1__1.0.0.sql
 -- Schema + seed unificado de la plataforma SaaS (version de app 1.0.0).
--- Consolida: V1__schema, V2__seed_base, V3__realign_menus,
--- V4__outbox_event, V6__business_schema y la tabla third_party.
--- El esquema de localizaciones vive aparte en V2__1.0.0.sql.
+--
+--
+-- Consolida el historico completo: V1__schema, V2__seed_base, V3__realign_menus,
+-- V4__outbox_event, V6__business_schema, third_party, y las que fueron V3..V12
+-- (landing del negocio, altas minimas de empleado, saldo, especialidades,
+-- salario base hibrido, liquidaciones, tour guiado, gestion de Elastic,
+-- "Mi empresa" y la bandera de submenu).
+--
+-- Al consolidar, cada ALTER posterior se aplico sobre el CREATE que le
+-- correspondia y cada UPDATE de seed se resolvio al valor final: aqui no hay
+-- columnas que nazcan NOT NULL para relajarse tres lineas mas abajo, ni menus
+-- que se inserten para apagarse despues. Lo que se lee es el estado final.
 --
 -- Estandar BD:
 --   * Tablas: snake_case singular   * Columnas: PascalCase
@@ -31,8 +40,11 @@ CREATE TABLE app_user (
     Username        VARCHAR(60)  NOT NULL,
     Email           VARCHAR(120) NOT NULL,
     PasswordHash    VARCHAR(120) NOT NULL,
-    FirstName       VARCHAR(80)  NOT NULL,
-    LastName        VARCHAR(80)  NOT NULL,
+    -- Nombres NULL a proposito: la cuenta del empleado nace minima (usuario,
+    -- correo y contrasena) cuando el dueno lo da de alta, y el propio empleado
+    -- completa sus datos desde el APK.
+    FirstName       VARCHAR(80)  NULL,
+    LastName        VARCHAR(80)  NULL,
     ProfilePhoto    VARCHAR(500) NULL,
     Theme           VARCHAR(30)  NOT NULL DEFAULT 'light',
     LanguageCode    VARCHAR(10)  NOT NULL DEFAULT 'es-CO',
@@ -147,6 +159,11 @@ CREATE TABLE menu (
     Route        VARCHAR(200) NULL,
     ParentId     CHAR(36)     NULL,
     DisplayOrder INT          NOT NULL DEFAULT 0,
+    -- Un submenu NO se pinta en el carril lateral: se pinta en el nav
+    -- secundario de su padre (el dock de "Mi empresa"). Por eso el padre es
+    -- obligatorio para un submenu, y lo valida MenuService: sin padre no hay
+    -- donde pintarlo. DEFAULT b'0' = menu normal.
+    IsSubmenu    BIT(1)       NOT NULL DEFAULT b'0',
     Enabled      BOOLEAN      NOT NULL DEFAULT TRUE,
     Visible      BOOLEAN      NOT NULL DEFAULT TRUE,
     CreatedBy CHAR(36) NULL,
@@ -426,8 +443,11 @@ INSERT INTO system_list (Id, Code, Name, Description, Enabled, Visible, AuditUse
 
 CREATE TABLE third_party (
     Id             CHAR(36)     NOT NULL,
-    DocumentTypeId CHAR(36)     NOT NULL,
-    DocumentNumber VARCHAR(40)  NOT NULL,
+    -- Documento NULL a proposito: el alta minima de empleado crea el tercero
+    -- como "shell" (solo sus FKs) y el empleado completa el documento desde
+    -- el APK. La unicidad (tipo, numero) sigue valiendo cuando ya hay datos.
+    DocumentTypeId CHAR(36)     NULL,
+    DocumentNumber VARCHAR(40)  NULL,
     UserId         CHAR(36)     NULL,
     FirstName      VARCHAR(80)  NULL,
     SecondName     VARCHAR(80)  NULL,
@@ -558,7 +578,10 @@ INSERT INTO constant (Id, Code, Name, Value, Description, Enabled, Visible, Audi
     ('66666666-0000-0000-0000-000000000002', 'MAX_LOGIN_ATTEMPTS',  'Maximo intentos de login',         '5',   'Cantidad maxima de intentos fallidos antes de bloquear cuenta',   TRUE, TRUE, NULL, @now, @now),
     ('66666666-0000-0000-0000-000000000003', 'SESION_TIMEOUT_MIN',  'Timeout de sesion (minutos)',      '60',  'Tiempo de inactividad antes de cerrar sesion automaticamente',    TRUE, TRUE, NULL, @now, @now),
     ('66666666-0000-0000-0000-000000000004', 'PROFILE_PHOTO_MAX_KB', 'Tamano maximo foto de perfil (KB)', '512', 'Limite de tamano para subir foto de perfil de usuario',           TRUE, TRUE, NULL, @now, @now),
-    ('66666666-0000-0000-0000-000000000005', 'VERAPP',              'Version vigente del APK',          '1.0.0', 'Si la version instalada difiere, el APK exige actualizar',        TRUE, TRUE, NULL, @now, @now);
+    -- Debe ir a la par de AppInfo.version del APK: es contra esta constante que
+    -- el APK decide si exige actualizar. Publicar un APK desde el admin la
+    -- reescribe; este valor es solo la linea base de una instalacion nueva.
+    ('66666666-0000-0000-0000-000000000005', 'VERAPP',              'Version vigente del APK',          '1.0.3', 'Si la version instalada difiere, el APK exige actualizar',        TRUE, TRUE, NULL, @now, @now);
 
 -- ---------------------------------------------------------------------
 -- MENUS (estructura jerarquica configurable)
@@ -594,6 +617,8 @@ INSERT INTO menu (
 ('77770002-0000-0000-0000-000000000024', 'ADMIN_POLITICAL_DIVISION', 'Division politica', 'map', '/admin/political-division', '77770001-0000-0000-0000-000000000020', 4, TRUE, TRUE, NULL, @now, @now),
 ('77770002-0000-0000-0000-000000000025', 'ADMIN_SYSTEM_STATUS', 'Estado del sistema', 'server', '/admin/system-status', '77770001-0000-0000-0000-000000000020', 5, TRUE, TRUE, NULL, @now, @now),
 ('77770002-0000-0000-0000-000000000026', 'ADMIN_APP_VERSIONS', 'Versiones del APK', 'smartphone', '/admin/app-versions', '77770001-0000-0000-0000-000000000020', 6, TRUE, TRUE, NULL, @now, @now),
+('77770002-0000-0000-0000-000000000027', 'ADMIN_TOUR', 'Tour guiado', 'compass', '/admin/tour', '77770001-0000-0000-0000-000000000020', 7, TRUE, TRUE, NULL, @now, @now),
+('77770002-0000-0000-0000-000000000028', 'ADMIN_ELASTIC', 'Gestion de Elastic', 'database', '/admin/elastic', '77770001-0000-0000-0000-000000000020', 8, TRUE, TRUE, NULL, @now, @now),
 
 ('77770001-0000-0000-0000-000000000030', 'ADMIN_SECURITY_GROUP', 'Seguridad', 'shield', NULL, NULL, 6, TRUE, TRUE, NULL, @now, @now),
 ('77770002-0000-0000-0000-000000000031', 'ADMIN_ROLES', 'Roles', 'shield', '/admin/roles', '77770001-0000-0000-0000-000000000030', 1, TRUE, TRUE, NULL, @now, @now),
@@ -615,11 +640,15 @@ ON DUPLICATE KEY UPDATE
 
 -- ---------------------------------------------------------------------
 -- 2. MENU_ROLE - ADMIN (idempotente)
+-- El filtro va por Code, no solo por familia de Id: "Mi empresa" nacio con un
+-- Id de la familia 77770002 (venia de una migracion posterior) y sin este
+-- AND el administrador heredaria un menu que es del dueno.
 -- ---------------------------------------------------------------------
 INSERT INTO menu_role (Id, MenuId, RoleId, Enabled, Visible, AuditUser, AuditDate, CreatedDate)
 SELECT UUID(), m.Id, '11111111-0000-0000-0000-000000000001', TRUE, TRUE, NULL, @now, @now
 FROM menu m
 WHERE (m.Id LIKE '77770001-0000-%' OR m.Id LIKE '77770002-0000-%')
+  AND m.Code LIKE 'ADMIN%'
   AND NOT EXISTS (
     SELECT 1 FROM menu_role mr
     WHERE mr.MenuId = m.Id
@@ -629,19 +658,48 @@ WHERE (m.Id LIKE '77770001-0000-%' OR m.Id LIKE '77770002-0000-%')
 -- ===================== [menus tenant - OWNER] =====================
 -- Menus del dueño (rol OWNER). Apuntan a rutas /tenant/* (área separada de /admin).
 -- El sidebar del dueño se nutre de estos via /menus/me (config por rol).
-INSERT INTO menu (Id, Code, Name, Icon, Route, ParentId, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
-('77771001-0000-0000-0000-000000000001', 'TENANT_DASHBOARD',  'Panel',            'activity',   '/tenant/dashboard',  NULL, 1, TRUE, TRUE, NULL, @now, @now),
-('77771001-0000-0000-0000-000000000002', 'TENANT_BUSINESS',   'Mi negocio',       'building-2', '/tenant/mi-negocio', NULL, 2, TRUE, TRUE, NULL, @now, @now),
-('77771001-0000-0000-0000-000000000005', 'TENANT_SERVICES',   'Servicios',        'scissors',   '/tenant/servicios',  NULL, 3, TRUE, TRUE, NULL, @now, @now),
-('77771001-0000-0000-0000-000000000006', 'TENANT_BRANCHES',   'Sedes',            'map-pin',    '/tenant/sedes',      NULL, 4, TRUE, TRUE, NULL, @now, @now),
-('77771001-0000-0000-0000-000000000007', 'TENANT_EMPLOYEES',  'Empleados',        'users',      '/tenant/empleados',  NULL, 5, TRUE, TRUE, NULL, @now, @now),
-('77771001-0000-0000-0000-000000000003', 'TENANT_PROFILE',    'Mi perfil',        'user',       '/tenant/profile',    NULL, 9, TRUE, TRUE, NULL, @now, @now),
-('77771001-0000-0000-0000-000000000004', 'TENANT_ONBOARDING', 'Crear mi negocio', 'plus',       '/tenant/onboarding', NULL, 8, TRUE, TRUE, NULL, @now, @now);
+--
+-- Estructura final:
+--   Panel
+--   Negocio  (grupo, sin ruta)
+--     |- Mi empresa    -> pantalla con dock lateral; sus seis hijos son
+--     |                   SUBMENUS: no se pintan en el carril lateral sino
+--     |                   en ese dock (IsSubmenu = 1)
+--     |- Liquidaciones -> operacion del dia a dia, se queda en el sidebar
+--   Mi perfil
+--
+-- El ORDEN de las filas importa: fk_menu_parent se valida fila a fila dentro
+-- del mismo INSERT, asi que cada padre va antes que sus hijos.
+INSERT INTO menu (Id, Code, Name, Icon, Route, ParentId, DisplayOrder, IsSubmenu, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
+('77771001-0000-0000-0000-000000000001', 'TENANT_DASHBOARD',   'Panel',          'activity',   '/tenant/dashboard',     NULL, 1, b'0', TRUE, TRUE, NULL, @now, @now),
 
+('77771001-0000-0000-0000-000000000020', 'NEG',                'Negocio',        'briefcase',  NULL,                    NULL, 2, b'0', TRUE, TRUE, NULL, @now, @now),
+('77770002-0000-0000-0000-000000000030', 'TENANT_COMPANY',     'Mi empresa',     'building-2', '/tenant/mi-empresa',    '77771001-0000-0000-0000-000000000020', 2, b'0', TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000012', 'TENANT_SETTLEMENTS', 'Liquidaciones',  'banknote',   '/tenant/liquidaciones', '77771001-0000-0000-0000-000000000020', 3, b'0', TRUE, TRUE, NULL, @now, @now),
+
+-- Las seis configuraciones viven DENTRO de "Mi empresa". Sus rutas sueltas
+-- siguen existiendo en el front (hay pasos de tour, enlaces guardados y specs
+-- E2E que entran directo); lo que cambia es donde se dibujan. El orden es el
+-- mismo recorrido que sigue quien configura.
+('77771001-0000-0000-0000-000000000002', 'TENANT_BUSINESS',    'Mi negocio',     'building-2', '/tenant/mi-negocio',    '77770002-0000-0000-0000-000000000030', 1, b'1', TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000005', 'TENANT_SERVICES',    'Servicios',      'scissors',   '/tenant/servicios',     '77770002-0000-0000-0000-000000000030', 2, b'1', TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000006', 'TENANT_BRANCHES',    'Sedes',          'map-pin',    '/tenant/sedes',         '77770002-0000-0000-0000-000000000030', 3, b'1', TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000007', 'TENANT_EMPLOYEES',   'Empleados',      'users',      '/tenant/empleados',     '77770002-0000-0000-0000-000000000030', 4, b'1', TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000010', 'TENANT_PAGE',        'Mi página',      'globe',      '/tenant/mi-pagina',     '77770002-0000-0000-0000-000000000030', 5, b'1', TRUE, TRUE, NULL, @now, @now),
+('77771001-0000-0000-0000-000000000011', 'TENANT_FINANCE',     'Compensaciones', 'wallet',     '/tenant/compensaciones','77770002-0000-0000-0000-000000000030', 6, b'1', TRUE, TRUE, NULL, @now, @now),
+
+('77771001-0000-0000-0000-000000000003', 'TENANT_PROFILE',     'Mi perfil',      'user',       '/tenant/profile',       NULL, 9, b'0', TRUE, TRUE, NULL, @now, @now),
+-- "Crear mi negocio" no es una opcion de menu: el onboarding es un gate de
+-- primera vez (la ruta redirige si el negocio ya existe). La fila se queda
+-- apagada, no se borra, para no romper referencias a su Id.
+('77771001-0000-0000-0000-000000000004', 'TENANT_ONBOARDING',  'Crear mi negocio', 'plus',     '/tenant/onboarding',    NULL, 8, b'0', FALSE, FALSE, NULL, @now, @now);
+
+-- OWNER ve todo lo suyo. "Mi empresa" va aparte del LIKE: su Id quedo en la
+-- familia 77770002 por como nacio (ver el filtro por Code de los menus ADMIN).
 INSERT INTO menu_role (Id, MenuId, RoleId, Enabled, Visible, AuditUser, AuditDate, CreatedDate)
 SELECT UUID(), m.Id, '11111111-0000-0000-0000-000000000004', TRUE, TRUE, NULL, @now, @now
 FROM menu m
-WHERE m.Id LIKE '77771001-0000-%'
+WHERE (m.Id LIKE '77771001-0000-%' OR m.Code = 'TENANT_COMPANY')
   AND NOT EXISTS (
     SELECT 1 FROM menu_role mr
     WHERE mr.MenuId = m.Id
@@ -744,6 +802,34 @@ CREATE TABLE business (
     CONSTRAINT fk_business_status FOREIGN KEY (StatusId) REFERENCES status (Id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Pagina publica del negocio (1:1 con business), accedida por subdominio/slug
+-- y editable por el dueno con vista previa. GalleryJson es un arreglo JSON de
+-- URLs (["url1","url2",...]).
+CREATE TABLE business_landing (
+    Id           CHAR(36)     NOT NULL,
+    BusinessId   CHAR(36)     NOT NULL,
+    Tagline      VARCHAR(160) NULL,
+    About        TEXT         NULL,
+    Phone        VARCHAR(40)  NULL,
+    Whatsapp     VARCHAR(40)  NULL,
+    ContactEmail VARCHAR(120) NULL,
+    Instagram    VARCHAR(160) NULL,
+    Facebook     VARCHAR(160) NULL,
+    HeroImageUrl VARCHAR(500) NULL,
+    GalleryJson  JSON         NULL,
+    ScheduleText VARCHAR(400) NULL,
+    Published    BOOLEAN      NOT NULL DEFAULT FALSE,
+    Enabled      BOOLEAN      NOT NULL DEFAULT TRUE,
+    Visible      BOOLEAN      NOT NULL DEFAULT TRUE,
+    CreatedBy    CHAR(36)     NULL,
+    AuditUser    CHAR(36)     NULL,
+    AuditDate    DATETIME(6)  NOT NULL,
+    CreatedDate  DATETIME(6)  NOT NULL,
+    PRIMARY KEY (Id),
+    UNIQUE KEY uq_business_landing_business (BusinessId),
+    CONSTRAINT fk_business_landing_business FOREIGN KEY (BusinessId) REFERENCES business (Id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Dominios/slug por empresa: una empresa puede tener varios (uno primario).
 -- Separado de business: el slug y la gestion de dominios tienen su propio ciclo
 -- de vida (verificacion, dominio propio) y no deben mezclarse con la identidad
@@ -778,8 +864,11 @@ CREATE TABLE business_owner (
     CONSTRAINT fk_bo_third_party FOREIGN KEY (ThirdPartyId) REFERENCES third_party (Id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- PositionId/HireDate NULL: el alta minima crea al empleado con sus FKs y el
+-- resto llega cuando completa su perfil. SpecialtyId es nullable y SIN FK dura
+-- (igual que business_offering.CategoryId): no acopla el orden de inserciones.
 CREATE TABLE employee (
-    Id CHAR(36) NOT NULL, ThirdPartyId CHAR(36) NOT NULL, BranchId CHAR(36) NOT NULL, PositionId CHAR(36) NOT NULL, EmployeeCode VARCHAR(40) NULL, HireDate DATE NOT NULL, TerminationDate DATE NULL, StatusId CHAR(36) NULL,
+    Id CHAR(36) NOT NULL, ThirdPartyId CHAR(36) NOT NULL, BranchId CHAR(36) NOT NULL, PositionId CHAR(36) NULL, EmployeeCode VARCHAR(40) NULL, HireDate DATE NULL, TerminationDate DATE NULL, StatusId CHAR(36) NULL, SpecialtyId CHAR(36) NULL,
     Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE, CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
     PRIMARY KEY (Id), KEY idx_emp_branch (BranchId), KEY idx_emp_third_party (ThirdPartyId),
     CONSTRAINT fk_emp_third_party FOREIGN KEY (ThirdPartyId) REFERENCES third_party (Id),
@@ -797,6 +886,16 @@ CREATE TABLE client (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----- Ofertas (servicios que ofrece la empresa) -----
+-- Catalogo de ESPECIALIDADES per-business (espejo de offering_category): agrupa
+-- servicios por disciplina (Barberia, Estilismo, Manicure...) y clasifica al
+-- empleado. Habilita simular la compensacion por % de servicio filtrando a la
+-- especialidad del empleado.
+CREATE TABLE specialty (
+    Id CHAR(36) NOT NULL, BusinessId CHAR(36) NOT NULL, Name VARCHAR(120) NOT NULL, DisplayOrder INT NOT NULL DEFAULT 0,
+    Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE, CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
+    PRIMARY KEY (Id), KEY idx_specialty_business (BusinessId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE offering_category (
     Id CHAR(36) NOT NULL, BusinessId CHAR(36) NOT NULL, Name VARCHAR(120) NOT NULL, DisplayOrder INT NOT NULL DEFAULT 0,
     Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE, CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
@@ -805,7 +904,7 @@ CREATE TABLE offering_category (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE business_offering (
-    Id CHAR(36) NOT NULL, BusinessId CHAR(36) NOT NULL, CategoryId CHAR(36) NULL, Name VARCHAR(160) NOT NULL, Description VARCHAR(500) NULL, DurationMinutes INT NOT NULL, Price DECIMAL(12,2) NOT NULL, IsActive BOOLEAN NOT NULL DEFAULT TRUE,
+    Id CHAR(36) NOT NULL, BusinessId CHAR(36) NOT NULL, CategoryId CHAR(36) NULL, SpecialtyId CHAR(36) NULL, Name VARCHAR(160) NOT NULL, Description VARCHAR(500) NULL, DurationMinutes INT NOT NULL, Price DECIMAL(12,2) NOT NULL, IsActive BOOLEAN NOT NULL DEFAULT TRUE,
     Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE, CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
     PRIMARY KEY (Id), KEY idx_boff_business (BusinessId),
     CONSTRAINT fk_boff_business FOREIGN KEY (BusinessId) REFERENCES business (Id),
@@ -872,26 +971,102 @@ CREATE TABLE employee_shift_assignment (
 -- efectiva escala de abajo hacia arriba: si el empleado no tiene config
 -- vigente toma la de su sede, y si la sede no tiene, la del negocio.
 -- Misma forma en los 3: (Type, Value) condicionado por Type.
+--
+-- SalaryBase existe solo para los tipos HIBRIDOS ("Salario + % servicio",
+-- "Salario + comision"): ahi CompensationValue guarda el % y SalaryBase el
+-- salario. Los tipos no-hibridos lo dejan NULL y CompensationValue mantiene
+-- su significado de siempre.
 -- ---------------------------------------------------------------------
 CREATE TABLE business_compensation (
-    Id CHAR(36) NOT NULL, BusinessId CHAR(36) NOT NULL, CompensationType VARCHAR(40) NOT NULL, CompensationValue DECIMAL(12,2) NOT NULL, ValidFrom DATETIME(6) NOT NULL, ValidTo DATETIME(6) NULL,
+    Id CHAR(36) NOT NULL, BusinessId CHAR(36) NOT NULL, CompensationType VARCHAR(40) NOT NULL, CompensationValue DECIMAL(12,2) NOT NULL, SalaryBase DECIMAL(12,2) NULL, ValidFrom DATETIME(6) NOT NULL, ValidTo DATETIME(6) NULL,
     Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE, CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
     PRIMARY KEY (Id), KEY idx_bizcomp_business (BusinessId),
     CONSTRAINT fk_bizcomp_business FOREIGN KEY (BusinessId) REFERENCES business (Id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE branch_compensation (
-    Id CHAR(36) NOT NULL, BranchId CHAR(36) NOT NULL, CompensationType VARCHAR(40) NOT NULL, CompensationValue DECIMAL(12,2) NOT NULL, ValidFrom DATETIME(6) NOT NULL, ValidTo DATETIME(6) NULL,
+    Id CHAR(36) NOT NULL, BranchId CHAR(36) NOT NULL, CompensationType VARCHAR(40) NOT NULL, CompensationValue DECIMAL(12,2) NOT NULL, SalaryBase DECIMAL(12,2) NULL, ValidFrom DATETIME(6) NOT NULL, ValidTo DATETIME(6) NULL,
     Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE, CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
     PRIMARY KEY (Id), KEY idx_brcomp_branch (BranchId),
     CONSTRAINT fk_brcomp_branch FOREIGN KEY (BranchId) REFERENCES branch (Id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE employee_compensation (
-    Id CHAR(36) NOT NULL, EmployeeId CHAR(36) NOT NULL, CompensationType VARCHAR(40) NOT NULL, CompensationValue DECIMAL(12,2) NOT NULL, ValidFrom DATETIME(6) NOT NULL, ValidTo DATETIME(6) NULL,
+    Id CHAR(36) NOT NULL, EmployeeId CHAR(36) NOT NULL, CompensationType VARCHAR(40) NOT NULL, CompensationValue DECIMAL(12,2) NOT NULL, SalaryBase DECIMAL(12,2) NULL, ValidFrom DATETIME(6) NOT NULL, ValidTo DATETIME(6) NULL,
     Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE, CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
     PRIMARY KEY (Id), KEY idx_ec_employee (EmployeeId),
     CONSTRAINT fk_ec_employee FOREIGN KEY (EmployeeId) REFERENCES employee (Id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- Saldo del empleado (read model materializado).
+--
+-- El saldo es lo primero que el empleado ve en el APK. En vez de recalcularlo
+-- al vuelo en cada consulta (servicios prestados x compensacion - pagos), se
+-- MATERIALIZA aqui y se refresca por evento cuando cambia una de sus entradas.
+-- Ademas se proyecta a Elasticsearch (indice employee_balances).
+--
+-- AmountAccrued/AmountPaid arrancan en 0: todavia no existe el modulo de
+-- servicios prestados/pagos que los alimente. La tuberia queda lista.
+-- ---------------------------------------------------------------------
+CREATE TABLE employee_balance (
+    Id CHAR(36) NOT NULL,
+    BusinessId CHAR(36) NOT NULL,
+    BranchId CHAR(36) NULL,
+    EmployeeId CHAR(36) NOT NULL,
+    ThirdPartyId CHAR(36) NULL,
+    UserId CHAR(36) NULL,
+    -- Devengado por servicios prestados (futuro modulo de agenda/servicios).
+    AmountAccrued DECIMAL(14,2) NOT NULL DEFAULT 0,
+    -- Pagado al empleado (futuro modulo de pagos).
+    AmountPaid DECIMAL(14,2) NOT NULL DEFAULT 0,
+    -- Por cobrar = AmountAccrued - AmountPaid. Denormalizado para leer directo.
+    Balance DECIMAL(14,2) NOT NULL DEFAULT 0,
+    Currency VARCHAR(3) NOT NULL DEFAULT 'COP',
+    LastCalculatedAt DATETIME(6) NULL,
+    Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE,
+    CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
+    PRIMARY KEY (Id),
+    -- EmployeeId es una REFERENCIA al agregado de business-service, NO una FK
+    -- dura: el saldo se inicializa (S2S) durante el aprovisionamiento, antes de
+    -- que la transaccion de business confirme la fila de employee. Una FK
+    -- cross-servicio la rechazaria. Se indexa como clave normal.
+    UNIQUE KEY uq_eb_employee (EmployeeId),
+    KEY idx_eb_business (BusinessId),
+    KEY idx_eb_user (UserId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- Liquidacion de comisiones al empleado (auditoria de tesoreria).
+--
+-- Confirmar una liquidacion mueve dinero: suma a AmountPaid del saldo y por
+-- tanto baja su Balance por cobrar. Es IRREVERSIBLE, asi que cada confirmacion
+-- deja su fila aqui: quien liquido, cuanto, cuando y sobre que saldo.
+--
+-- El desglose servicio a servicio llegara con el modulo de citas; por eso NO
+-- hay tabla de detalle todavia: se liquida contra el saldo acumulado.
+-- ---------------------------------------------------------------------
+CREATE TABLE employee_settlement (
+    Id CHAR(36) NOT NULL,
+    BusinessId CHAR(36) NOT NULL,
+    BranchId CHAR(36) NULL,
+    EmployeeId CHAR(36) NOT NULL,
+    -- Monto liquidado en esta operacion (siempre > 0).
+    Amount DECIMAL(14,2) NOT NULL,
+    -- Saldo por cobrar que tenia el empleado justo antes de liquidar. Deja la
+    -- foto del momento para poder auditar sin recalcular historia.
+    BalanceBefore DECIMAL(14,2) NOT NULL,
+    Currency VARCHAR(3) NOT NULL DEFAULT 'COP',
+    SettledAt DATETIME(6) NOT NULL,
+    Note VARCHAR(255) NULL,
+    Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE,
+    CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
+    PRIMARY KEY (Id),
+    -- Mismas razones que employee_balance: EmployeeId es referencia
+    -- cross-servicio, no FK dura. Se indexa para el historial.
+    KEY idx_es_employee (EmployeeId),
+    KEY idx_es_business (BusinessId),
+    KEY idx_es_settled (SettledAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----- Seeds de catalogos -----
@@ -972,9 +1147,73 @@ CREATE TABLE app_version (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
--- FASE B: permiso de reindexado de terceros (asignado a ADMIN)
+-- Permisos de Elasticsearch (ambos asignados a ADMIN).
+-- THIRDPARTY_REINDEX es el viejo, de cuando reindexar era una accion escondida
+-- en la pantalla de terceros; se queda por compatibilidad. La pantalla nueva
+-- cubre TODOS los indices con tres granularidades y pide ELASTIC_MANAGE.
 -- ---------------------------------------------------------------------
 INSERT INTO permission (Id, Code, Name, Description, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
-    ('22222222-0000-0000-0000-000000000007', 'THIRDPARTY_REINDEX', 'Reindexar tercero', 'Permite reindexar un tercero en Elasticsearch', TRUE, TRUE, NULL, @now, @now);
+    ('22222222-0000-0000-0000-000000000007', 'THIRDPARTY_REINDEX', 'Reindexar tercero', 'Permite reindexar un tercero en Elasticsearch', TRUE, TRUE, NULL, @now, @now),
+    ('22222222-0000-0000-0000-000000000008', 'ELASTIC_MANAGE', 'Gestionar Elasticsearch', 'Permite consultar el estado de los indices y reindexar registros, entidades o todo', TRUE, TRUE, NULL, @now, @now);
 INSERT INTO role_permission (Id, RoleId, PermissionId, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
-    ('33333333-0000-0000-0000-0000000000a7', '11111111-0000-0000-0000-000000000001', '22222222-0000-0000-0000-000000000007', TRUE, TRUE, NULL, @now, @now);
+    ('33333333-0000-0000-0000-0000000000a7', '11111111-0000-0000-0000-000000000001', '22222222-0000-0000-0000-000000000007', TRUE, TRUE, NULL, @now, @now),
+    ('33333333-0000-0000-0000-0000000000a8', '11111111-0000-0000-0000-000000000001', '22222222-0000-0000-0000-000000000008', TRUE, TRUE, NULL, @now, @now);
+
+-- ---------------------------------------------------------------------
+-- Tour guiado configurable.
+--
+-- Cada fila es un paso del recorrido de bienvenida. El paso resuelve a QUE
+-- apunta en cascada:
+--   1) MenuId no nulo  -> foco sobre el elemento del menu, ancla "nav-{Code}".
+--   2) Anchor no nulo  -> foco sobre un ancla literal del DOM (los KPIs del
+--                         panel, que no son un menu y nunca lo seran).
+--   3) ninguno         -> diapositiva a pantalla completa (saludo, cierre).
+--
+-- El filtrado por rol NO se guarda aqui: se hereda del menu asociado, que ya
+-- pasa por menu_role. Un paso cuyo menu no ve el usuario, desaparece.
+-- ---------------------------------------------------------------------
+CREATE TABLE tour_step (
+    Id CHAR(36) NOT NULL,
+    -- ON DELETE SET NULL: si el admin borra el menu, el paso degrada a
+    -- diapositiva en vez de quedar apuntando a una referencia rota.
+    MenuId CHAR(36) NULL,
+    Anchor VARCHAR(60) NULL,
+    Title VARCHAR(160) NOT NULL,
+    Body VARCHAR(500) NOT NULL,
+    Icon VARCHAR(60) NULL,
+    DisplayOrder INT NOT NULL DEFAULT 0,
+    Enabled BOOLEAN NOT NULL DEFAULT TRUE, Visible BOOLEAN NOT NULL DEFAULT TRUE,
+    CreatedBy CHAR(36) NULL, AuditUser CHAR(36) NULL, AuditDate DATETIME(6) NOT NULL, CreatedDate DATETIME(6) NOT NULL,
+    PRIMARY KEY (Id),
+    KEY idx_tour_step_order (DisplayOrder),
+    CONSTRAINT fk_tour_step_menu FOREIGN KEY (MenuId) REFERENCES menu (Id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Recorrido inicial. Sin esto el tour arranca vacio en una instalacion nueva.
+-- Los pasos 4 y 5 apuntan a menus sembrados mas arriba en este mismo script,
+-- asi que van con su Id directo.
+INSERT INTO tour_step (Id, MenuId, Anchor, Title, Body, Icon, DisplayOrder, Enabled, Visible, AuditUser, AuditDate, CreatedDate) VALUES
+('77772001-0000-0000-0000-000000000001', NULL, NULL,
+ '¡Te damos la bienvenida!',
+ 'Tu negocio, tu equipo y tus cuentas en un solo lugar. Deja que te muestre lo esencial.',
+ 'sparkles', 1, TRUE, TRUE, NULL, @now, @now),
+('77772001-0000-0000-0000-000000000002', NULL, NULL,
+ 'Todo tu negocio, ordenado',
+ 'Sedes, servicios, equipo y pagos viven aquí. Nada de hojas de cálculo sueltas.',
+ 'building-2', 2, TRUE, TRUE, NULL, @now, @now),
+('77772001-0000-0000-0000-000000000003', NULL, 'kpis',
+ 'Tu resumen de un vistazo',
+ 'Cuántas sedes, cuánta gente y cuántos servicios tienes. Toca cualquiera para ir al detalle.',
+ 'activity', 3, TRUE, TRUE, NULL, @now, @now),
+('77772001-0000-0000-0000-000000000004', '77771001-0000-0000-0000-000000000007', NULL,
+ 'Tu equipo',
+ 'Das de alta a cada persona y ellos entran por la app móvil con su correo y contraseña.',
+ 'users', 4, TRUE, TRUE, NULL, @now, @now),
+('77772001-0000-0000-0000-000000000005', '77771001-0000-0000-0000-000000000012', NULL,
+ 'Pagarle a tu equipo',
+ 'Aquí ves lo que le debes a cada empleado y confirmas su liquidación.',
+ 'banknote', 5, TRUE, TRUE, NULL, @now, @now),
+('77772001-0000-0000-0000-000000000006', NULL, NULL,
+ '¿Empezamos?',
+ 'Estos son los pasos mínimos para operar. Hazlos ahora o más tarde, a tu ritmo.',
+ 'circle-check', 6, TRUE, TRUE, NULL, @now, @now);

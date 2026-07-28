@@ -1,7 +1,10 @@
 -- =====================================================================
 -- V2__1.0.0.sql
--- Esquema y datos de localizaciones (division politica). Separado de V1
--- por su volumen. Antiguo: V7__location_schema.
+-- Esquema y datos de localizaciones (division politica). Es el UNICO script
+-- aparte de V1, y existe solo por volumen: son ~20k filas de division
+-- politica que ahogarian la lectura del esquema. Todo lo demas (estructura,
+-- catalogos, menus, permisos, seed) vive en V1.
+-- Antiguo: V7__location_schema.
 -- =====================================================================
 
 -- =====================================================================
