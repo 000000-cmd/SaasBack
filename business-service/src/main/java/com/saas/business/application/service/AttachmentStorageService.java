@@ -37,7 +37,15 @@ public class AttachmentStorageService {
             "image/png", "png", "image/jpeg", "jpg", "image/webp", "webp", "image/svg+xml", "svg");
 
     /** Categorías permitidas y si aceptan sólo imágenes (hoy todas). */
-    private static final Set<String> CATEGORIES = Set.of("avatar", "logo", "landing", "gallery");
+    // receipt: comprobante de un pago electronico de un servicio prestado.
+    // result:  foto del trabajo terminado (el corte, las unas...).
+    // payroll: comprobante de la CONSIGNACION de nomina al colaborador.
+    // Van separadas a proposito: "receipt" prueba que el cliente pago un
+    // servicio, "payroll" prueba que la empresa le pago al empleado y "result"
+    // es la foto del trabajo. Mezclarlas en "gallery" haria imposible
+    // distinguirlas justo cuando alguien reclama un pago.
+    private static final Set<String> CATEGORIES =
+            Set.of("avatar", "logo", "landing", "gallery", "receipt", "result", "payroll");
 
     private final Path baseDir;
 
@@ -46,12 +54,27 @@ public class AttachmentStorageService {
     }
 
     /**
+     * Lo que queda de un adjunto guardado: dónde está y qué es.
+     *
+     * <p>El {@code hash} es el SHA-256 del CONTENIDO. La URL no sirve para
+     * saber si dos adjuntos son el mismo fichero —cada subida genera un nombre
+     * nuevo—, y en un comprobante de pago eso importa: el mismo soporte subido
+     * a dos pagos distintos no lo notaba nadie.</p>
+     */
+    public record Stored(String url, String hash) {}
+
+    /**
      * Guarda el archivo y devuelve su URL pública (vía gateway).
      *
      * @param category una de {@link #CATEGORIES}
      * @param refId    a qué pertenece (userId, businessId…); sólo para nombrar, se sanea
      */
     public String store(MultipartFile file, String category, String refId) {
+        return storeWithHash(file, category, refId).url();
+    }
+
+    /** Igual, pero devolviendo además la huella del contenido. */
+    public Stored storeWithHash(MultipartFile file, String category, String refId) {
         if (!CATEGORIES.contains(category)) {
             throw new BusinessException("Categoría de adjunto no soportada: " + category);
         }
@@ -71,12 +94,31 @@ public class AttachmentStorageService {
             Path dir = baseDir.resolve(category);
             Files.createDirectories(dir);
             String filename = safeRef + "-" + UUID.randomUUID() + "." + EXT.get(contentType);
-            Files.copy(file.getInputStream(), dir.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
+
+            // Se leen los bytes UNA vez: sirven para escribir y para la huella.
+            // Abrir el stream dos veces no siempre funciona con un multipart, y
+            // cuando falla lo hace guardando un fichero vacío.
+            byte[] bytes = file.getBytes();
+            Files.write(dir.resolve(filename), bytes);
+
             String url = "/business/public/attachments/" + category + "/" + filename;
             log.info("Adjunto guardado: category={} ref={} file={}", category, safeRef, filename);
-            return url;
+            return new Stored(url, sha256(bytes));
         } catch (IOException e) {
             throw new BusinessException("No se pudo guardar el adjunto: " + e.getMessage());
+        }
+    }
+
+    /** SHA-256 en hexadecimal. Es la identidad del contenido, no del fichero. */
+    private static String sha256(byte[] bytes) {
+        try {
+            byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder sb = new StringBuilder(d.length * 2);
+            for (byte b : d) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            // SHA-256 lo trae toda JVM; si no estuviera, el problema es otro.
+            throw new IllegalStateException("Sin SHA-256 en esta JVM", e);
         }
     }
 

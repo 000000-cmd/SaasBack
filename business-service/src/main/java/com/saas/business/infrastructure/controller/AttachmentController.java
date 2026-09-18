@@ -45,8 +45,12 @@ public class AttachmentController {
         String owner = (refId != null && !refId.isBlank())
                 ? refId
                 : (principal != null ? principal.getUserId().toString() : null);
-        String url = storage.store(file, category, owner);
-        return ResponseEntity.ok(ApiResponse.success(Map.of("url", url), "Adjunto subido"));
+        // Se devuelve tambien la huella del contenido: es lo que permite saber
+        // despues que el MISMO comprobante respalda varios pagos. La URL no
+        // sirve para eso — cada subida genera un nombre nuevo.
+        AttachmentStorageService.Stored guardado = storage.storeWithHash(file, category, owner);
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of("url", guardado.url(), "hash", guardado.hash()), "Adjunto subido"));
     }
 
     /** Servicio público de los adjuntos (imágenes de avatar, logo, etc.). */

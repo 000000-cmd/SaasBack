@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter @Setter
@@ -25,6 +26,8 @@ public class BranchEntity extends BaseEntity {
     @JdbcTypeCode(SqlTypes.CHAR) @Column(name = "NeighborhoodId", length = 36)
     private UUID neighborhoodId;
     @Column(name = "AddressLine", length = 255) private String addressLine;
+    @Column(name = "Latitude", precision = 10, scale = 7) private BigDecimal latitude;
+    @Column(name = "Longitude", precision = 10, scale = 7) private BigDecimal longitude;
     @Column(name = "Phone", length = 30) private String phone;
     @Column(name = "IsMain", nullable = false) private Boolean isMain = Boolean.FALSE;
     @JdbcTypeCode(SqlTypes.CHAR) @Column(name = "StatusId", length = 36) private UUID statusId;

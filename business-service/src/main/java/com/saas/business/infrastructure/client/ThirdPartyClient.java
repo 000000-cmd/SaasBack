@@ -41,6 +41,14 @@ public interface ThirdPartyClient {
     @PostMapping("/internal/third-parties/cards")
     Map<String, PersonCard> personCards(@RequestBody Set<UUID> ids);
 
+    /**
+     * A donde se le puede escribir a una persona (id -> nombre, documento y
+     * correo verificado). Es el MISMO endpoint que usa finance para la nomina:
+     * un segundo endpoint que dijera lo mismo acabaria diciendo otra cosa.
+     */
+    @PostMapping("/internal/third-parties/notify-targets")
+    Map<String, NotifyTarget> notifyTargets(@RequestBody Set<UUID> ids);
+
     /** Pre-check de duplicado de documento antes de orquestar un alta. */
     @GetMapping("/internal/third-parties/document/exists")
     Map<String, Boolean> documentExists(@org.springframework.web.bind.annotation.RequestParam("documentTypeId") UUID documentTypeId,
@@ -66,4 +74,7 @@ public interface ThirdPartyClient {
 
     /** Espejo del PersonCard interno de thirdparty (nombre + foto). */
     record PersonCard(String fullName, String photoUrl) {}
+
+    /** Espejo del NotifyTarget interno de thirdparty. */
+    record NotifyTarget(UUID thirdPartyId, String fullName, String documentNumber, String email) {}
 }

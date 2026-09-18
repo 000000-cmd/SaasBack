@@ -7,6 +7,7 @@ import com.saas.business.infrastructure.persistence.mapper.BranchScheduleShiftPe
 import com.saas.business.infrastructure.persistence.repository.JpaBranchScheduleShiftRepository;
 import com.saas.common.persistence.BaseJpaRepositoryAdapter;
 import org.springframework.stereotype.Repository;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,5 +21,9 @@ public class BranchScheduleShiftRepositoryAdapter
     }
     @Override public List<BranchScheduleShift> findByBranchScheduleId(UUID branchScheduleId) {
         return getMapper().toDomainList(jpa.findByBranchScheduleId(branchScheduleId));
+    }
+    @Override public List<BranchScheduleShift> findByBranchScheduleIds(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        return getMapper().toDomainList(jpa.findByBranchScheduleIdIn(ids));
     }
 }

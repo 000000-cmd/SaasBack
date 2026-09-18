@@ -7,6 +7,8 @@ import com.saas.business.infrastructure.persistence.mapper.EmployeeShiftAssignme
 import com.saas.business.infrastructure.persistence.repository.JpaEmployeeShiftAssignmentRepository;
 import com.saas.common.persistence.BaseJpaRepositoryAdapter;
 import org.springframework.stereotype.Repository;
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,5 +25,10 @@ public class EmployeeShiftAssignmentRepositoryAdapter
     }
     @Override public List<EmployeeShiftAssignment> findByEmployeeIdAndValidToIsNull(UUID employeeId) {
         return getMapper().toDomainList(jpa.findByEmployeeIdAndValidToIsNull(employeeId));
+    }
+    @Override public List<EmployeeShiftAssignment> effectiveIn(Collection<UUID> employeeIds,
+                                                               LocalDateTime from, LocalDateTime to) {
+        if (employeeIds == null || employeeIds.isEmpty()) return List.of();
+        return getMapper().toDomainList(jpa.effectiveIn(employeeIds, from, to));
     }
 }
