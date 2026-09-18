@@ -1,0 +1,53 @@
+# =====================================================================
+# Cloudflare Tunnel — back.sylvanor.lat
+#
+# UN SOLO NIVEL de subdominio, y no es estética: el certificado gratuito de
+# Cloudflare cubre `sylvanor.lat` y `*.sylvanor.lat`, y un comodín TLS abarca
+# exactamente una etiqueta. Con `saas.back.sylvanor.lat` el borde no tenía
+# certificado que presentar y cerraba con `handshake_failure` — la app ni
+# siquiera llegaba a mandar la petición. Un tercer nivel exige Advanced
+# Certificate Manager, que se paga.
+#
+# Publica el GATEWAY (y solo el gateway). Todo el backend entra por ahí:
+# /auth, /system, /business, /thirdparty, /finance, /search, /notification.
+# Exponer cada microservicio por su lado sería multiplicar la superficie
+# pública para llegar exactamente a los mismos sitios.
+#
+# El túnel abre una conexión SALIENTE desde este PC hacia Cloudflare. No hay
+# puertos abiertos en el router ni IP pública que publicar, y por eso funciona
+# igual detrás de un CGNAT.
+#
+# TLS lo termina Cloudflare en su borde; del borde a esta máquina viaja por el
+# túnel, que ya va cifrado y autenticado con el certificado del conector. Que
+# el `service` de abajo sea http:// no significa tráfico en claro por internet.
+#
+# Uso:
+#   cloudflared tunnel --config deploy/cloudflared/config.yml run
+# =====================================================================
+
+# Creados con `cloudflared tunnel create saasback` (README.md, paso 2).
+tunnel: saasback
+credentials-file: C:\Users\jeiss\.cloudflared\a27fc91f-99e3-4334-8b82-17f34433e505.json
+
+# Reintento y keep-alive: el PC de casa se duerme, se va el Wi-Fi y vuelve.
+# Sin esto el túnel se cae y no regresa hasta reiniciarlo a mano.
+retries: 5
+grace-period: 30s
+
+ingress:
+  - hostname: back.sylvanor.lat
+    service: http://localhost:8080
+    originRequest:
+      # El gateway tiene response-timeout de 30s; se le deja margen para que
+      # sea ÉL quien decida cortar y responda su propio error, en vez de que
+      # Cloudflare devuelva un 524 genérico que no dice nada.
+      connectTimeout: 20s
+      # Subir el comprobante de una transferencia es lo más pesado que pasa por
+      # aquí. 100 MB es el tope del plan gratuito de Cloudflare de todas formas.
+      httpHostHeader: back.sylvanor.lat
+      noTLSVerify: false
+      disableChunkedEncoding: false
+
+  # Regla obligatoria de cierre: cualquier host que no sea el de arriba se
+  # rechaza. Sin ella, cloudflared no arranca.
+  - service: http_status:404

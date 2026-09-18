@@ -8,7 +8,7 @@ CREATE DATABASE IF NOT EXISTS saas_db
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
-CREATE DATABASE IF NOT EXISTS saas_audit
+CREATE DATABASE IF NOT EXISTS saas_events
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
