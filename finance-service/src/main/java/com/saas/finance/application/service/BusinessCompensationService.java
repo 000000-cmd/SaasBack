@@ -20,12 +20,15 @@ public class BusinessCompensationService extends GenericCrudService<BusinessComp
 
     @Override protected void onBeforeCreate(BusinessCompensation e) {
         if (e.getValidFrom() == null) e.setValidFrom(LocalDateTime.now());
+        // La columna es NOT NULL: sin eleccion explicita, mensual.
+        if (e.getPayrollFrequency() == null) e.setPayrollFrequency("MONTHLY");
         e.setValidTo(null);
     }
     @Override protected void applyChanges(BusinessCompensation e, BusinessCompensation i) {
         if (i.getCompensationType() != null) e.setCompensationType(i.getCompensationType());
         if (i.getCompensationValue() != null) e.setCompensationValue(i.getCompensationValue());
         e.setSalaryBase(i.getSalaryBase()); // nullable a proposito: al cambiar a un tipo no-hibrido se limpia
+        if (i.getPayrollFrequency() != null) e.setPayrollFrequency(i.getPayrollFrequency());
     }
 
     @Override @Transactional

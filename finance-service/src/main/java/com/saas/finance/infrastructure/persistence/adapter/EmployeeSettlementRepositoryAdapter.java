@@ -1,6 +1,7 @@
 package com.saas.finance.infrastructure.persistence.adapter;
 
 import com.saas.finance.domain.model.EmployeeSettlement;
+import com.saas.finance.domain.model.MovementType;
 import com.saas.finance.domain.port.out.IEmployeeSettlementRepositoryPort;
 import com.saas.finance.infrastructure.persistence.entity.EmployeeSettlementEntity;
 import com.saas.finance.infrastructure.persistence.mapper.EmployeeSettlementPersistenceMapper;
@@ -19,7 +20,7 @@ public class EmployeeSettlementRepositoryAdapter
 
     public EmployeeSettlementRepositoryAdapter(JpaEmployeeSettlementRepository jpa,
                                                EmployeeSettlementPersistenceMapper mapper) {
-        super(jpa, mapper, "Liquidacion de empleado"); this.jpa = jpa;
+        super(jpa, mapper, "Movimiento de saldo"); this.jpa = jpa;
     }
 
     @Override public List<EmployeeSettlement> findByEmployeeId(UUID employeeId) {
@@ -28,5 +29,28 @@ public class EmployeeSettlementRepositoryAdapter
 
     @Override public List<EmployeeSettlement> findByBusinessId(UUID businessId) {
         return getMapper().toDomainList(jpa.findByBusinessIdOrderBySettledAtDesc(businessId));
+    }
+
+    @Override public List<EmployeeSettlement> findByPayrollRunId(UUID payrollRunId) {
+        return getMapper().toDomainList(jpa.findByPayrollRunIdOrderBySettledAtDesc(payrollRunId));
+    }
+
+    @Override public boolean existsPeriodMovement(UUID employeeId, MovementType type, String periodKey) {
+        return jpa.existsByEmployeeIdAndMovementTypeAndPeriodKey(employeeId, type, periodKey);
+    }
+
+    @Override public List<EmployeeSettlement> findInWindow(UUID employeeId, MovementType type,
+                                                           java.time.LocalDateTime from,
+                                                           java.time.LocalDateTime to) {
+        return getMapper().toDomainList(
+                jpa.findByEmployeeIdAndMovementTypeAndSettledAtBetweenOrderBySettledAtAsc(
+                        employeeId, type, from, to));
+    }
+
+    @Override public java.util.Optional<EmployeeSettlement> findPreviousPayout(
+            UUID employeeId, java.time.LocalDateTime before) {
+        return jpa.findFirstByEmployeeIdAndMovementTypeAndSettledAtLessThanOrderBySettledAtDesc(
+                        employeeId, MovementType.PAYROLL, before)
+                .map(getMapper()::toDomain);
     }
 }

@@ -13,8 +13,21 @@ public interface IEmployeeBalanceUseCase {
     /** Recalcula el saldo del empleado desde sus fuentes y lo proyecta a ES. No-op si no existe la fila. */
     Optional<EmployeeBalance> recalculate(UUID employeeId);
 
-    /** Suma {@code amount} a lo pagado (baja el por cobrar), persiste y proyecta a ES. */
+    /** Suma {@code amount} al devengado (sube el por cobrar): el empleado GANA. */
+    EmployeeBalance registerCredit(UUID employeeId, java.math.BigDecimal amount);
+
+    /** Suma {@code amount} a lo pagado (baja el por cobrar): el empleado COBRA. */
     EmployeeBalance registerPayment(UUID employeeId, java.math.BigDecimal amount);
+
+    /**
+     * Deshace un pago: BAJA lo pagado, asi que el por cobrar vuelve a subir.
+     *
+     * <p>Metodo propio y no un {@code registerPayment} con importe negativo:
+     * "pagar menos veintemil" no es una operacion que exista en un libro, y el
+     * dia que alguien lo lea tendria que deducir que quiso decir. Ademas aqui
+     * cabe la unica guarda que importa — lo pagado no puede quedar negativo.</p>
+     */
+    EmployeeBalance registerPaymentReversal(UUID employeeId, java.math.BigDecimal amount);
 
     Optional<EmployeeBalance> findByEmployee(UUID employeeId);
     Optional<EmployeeBalance> findByUser(UUID userId);

@@ -34,6 +34,9 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**", "/api/info", "/api/version").permitAll()
                         // Endpoints internos consumidos por otros servicios via Feign
                         .requestMatchers("/internal/**").permitAll()
+                        // Descarga de la factura del cliente: el enlace llega por
+                        // SMS a alguien que no tiene cuenta. El secreto es la URL.
+                        .requestMatchers("/public/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
