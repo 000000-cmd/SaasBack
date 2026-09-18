@@ -1,6 +1,8 @@
 package com.saas.auth.application.service;
 
 import com.saas.auth.application.dto.request.LoginRequest;
+import com.saas.auth.application.dto.response.DeviceConflictResponse.Conflict;
+import com.saas.auth.application.exception.DeviceConflictException;
 import com.saas.auth.application.dto.request.RegisterOwnerRequest;
 import com.saas.auth.application.dto.response.LoginResponse;
 import com.saas.auth.application.dto.response.TokenPairResponse;
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -50,6 +53,7 @@ public class AuthService implements IAuthUseCase {
     private final BusinessResolver businessResolver;
     private final ThirdPartyServiceClient thirdPartyClient;
     private final SearchServiceClient searchClient;
+    private final DeviceLinkService deviceLinks;
 
     /**
      * Id fijo y conocido del rol {@code OWNER} (sembrado en la migración V1).
@@ -85,6 +89,51 @@ public class AuthService implements IAuthUseCase {
         // Cargar roles efectivos para el JWT
         User withRoles = userUseCase.loadWithRoles(user.getId());
 
+        // SEPARACION ESTRICTA DE ENTRADAS. Se comprueba ANTES de emitir tokens:
+        // antes el login triunfaba, se firmaban los tokens y era el navegador
+        // quien descartaba la sesion — con lo que cualquiera que llamase a la
+        // API directamente se quedaba con un token valido.
+        //
+        // El error es LITERALMENTE el mismo que el de un usuario inexistente. No
+        // se dice "usa tu acceso dedicado" ni nada parecido: eso confirmaria que
+        // la cuenta existe Y que es de administrador, que es justo lo que un
+        // atacante quiere averiguar.
+        // EL EMPLEADO TAMPOCO ENTRA POR LA WEB. Su sitio es el APK, y esto
+        // estaba comprobado SOLO en la pantalla de login: el servidor firmaba
+        // los tokens y era el navegador quien los tiraba a la basura. Quien
+        // llamara a la API directamente se quedaba con una sesion valida y con
+        // un menu de panel — y cada pantalla de ese panel le respondia 403.
+        // Es exactamente el fallo que ya se arreglo aqui para los
+        // administradores, olvidado en el otro caso.
+        //
+        // Aqui SI se dice el motivo, al reves que con los administradores: que
+        // una cuenta sea de empleado no es ningun secreto —su propio dueno lo
+        // sabe— y callarselo solo consigue que se quede mirando la pantalla.
+        // Ademas a este punto solo se llega con la contrasena correcta.
+        if (esEmpleadoDeAPK(request.surface(), withRoles)) {
+            log.info("Login de empleado rechazado en la web: username={}",
+                    withRoles.getUsername());
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Las cuentas de empleado ingresan por la app móvil.");
+        }
+
+        if (!surfaceAllows(request.surface(), withRoles)) {
+            log.info("Login rechazado por superficie: username={} surface={}",
+                    withRoles.getUsername(), request.surface());
+            throw new InvalidCredentialsException("Credenciales invalidas");
+        }
+
+        // UNA CUENTA, UN APARATO. Se comprueba DESPUES de validar la contrasena
+        // (si no, cualquiera podria averiguar desde donde entra otra persona
+        // probando identificadores) y ANTES de emitir tokens: si la persona
+        // cancela el aviso, no puede quedarle una sesion viva a medias.
+        List<Conflict> choques = deviceLinks.conflicts(withRoles.getId(), request.device());
+        if (!choques.isEmpty() && !request.unlinkOthers()) {
+            log.info("Login con sesion abierta en otro sitio: userId={} choques={}",
+                    withRoles.getId(), choques.size());
+            throw new DeviceConflictException(mensajeChoque(choques), choques);
+        }
+
         // Resolver el negocio del dueño una sola vez: se sella en el token y se
         // expone en la respuesta (evita el doble lookup).
         UUID businessId = businessResolver.resolve(withRoles.getId());
@@ -94,9 +143,31 @@ public class AuthService implements IAuthUseCase {
         withRoles.setLastLoginAt(LocalDateTime.now());
         userRepo.update(withRoles);
 
+        // Vincular el aparato. Va DESPUES de emitir los tokens: si desvincula a
+        // otro, lo que se revoca son las sesiones viejas, no la que se acaba de
+        // firmar aqui.
+        deviceLinks.bind(withRoles, request.device(), request.unlinkOthers());
+
         UserResponse userResponse = toUserResponseWithRoles(withRoles, businessId);
         log.info("Login exitoso: userId={} username={}", withRoles.getId(), withRoles.getUsername());
         return new LoginResponse(tokens, userResponse);
+    }
+
+    /**
+     * El texto que ve la persona. Se distingue el caso porque son dos sustos
+     * distintos: "mi cuenta esta en otro telefono" y "este telefono tiene otra
+     * cuenta" no se responden igual.
+     */
+    private static String mensajeChoque(List<Conflict> choques) {
+        boolean otroAparato = choques.stream().anyMatch(c -> Conflict.OTHER_DEVICE.equals(c.kind()));
+        boolean otraCuenta = choques.stream().anyMatch(c -> Conflict.OTHER_ACCOUNT.equals(c.kind()));
+        if (otroAparato && otraCuenta) {
+            return "Tu cuenta está abierta en otro dispositivo y en este hay otra sesión iniciada.";
+        }
+        if (otroAparato) {
+            return "Tu cuenta ya está abierta en otro dispositivo.";
+        }
+        return "En este dispositivo hay otra cuenta con la sesión abierta.";
     }
 
     @Override
@@ -211,6 +282,50 @@ public class AuthService implements IAuthUseCase {
         refreshTokenRepo.save(refresh);
 
         return TokenPairResponse.bearer(access, refreshValue, jwt.getAccessTokenTtlMillis() / 1000);
+    }
+
+    /**
+     * Roles que hacen a alguien administrador del sistema. Coincide con lo que
+     * el front resuelve como {@code SYSTEM_ADMIN}; si aquí y allí divergieran,
+     * la separación de entradas dejaría de tener sentido.
+     */
+    private static final java.util.Set<String> SYSTEM_ADMIN_ROLES =
+            java.util.Set.of("ADMIN", "SUPER_ADMIN", "SYSTEM_ADMIN");
+
+    /**
+     * ¿Puede este usuario entrar por esta puerta?
+     *
+     *   ADMIN   (:4201) — SOLO administradores.
+     *   PRODUCT (:4200) — todos MENOS administradores.
+     *   sin superficie  — sin restricción (el APK y los llamadores internos).
+     *
+     * La regla va en los dos sentidos a propósito: si :4201 admitiera a un
+     * usuario normal, dejaría de ser "estrictamente para administración".
+     */
+    /**
+     * Un empleado intentando entrar por la web.
+     *
+     * <p>Si ademas es dueno, entra: hay quien atiende en su propio local, y
+     * negarle su panel por tener tambien ficha de empleado seria absurdo.</p>
+     *
+     * <p>Sin superficie no se rechaza: el APK no manda ninguna, y es justo
+     * quien tiene que poder entrar.</p>
+     */
+    private boolean esEmpleadoDeAPK(String surface, User user) {
+        return LoginRequest.SURFACE_PRODUCT.equalsIgnoreCase(surface)
+                && user.hasRole("EMPLOYEE") && !user.hasRole("OWNER");
+    }
+
+    private boolean surfaceAllows(String surface, User user) {
+        if (surface == null || surface.isBlank()) return true;
+
+        boolean esAdmin = SYSTEM_ADMIN_ROLES.stream().anyMatch(user::hasRole);
+
+        if (LoginRequest.SURFACE_ADMIN.equalsIgnoreCase(surface))   return esAdmin;
+        if (LoginRequest.SURFACE_PRODUCT.equalsIgnoreCase(surface)) return !esAdmin;
+
+        // Superficie desconocida: no se adivina. Mejor negar que abrir de más.
+        return false;
     }
 
     private UserResponse toUserResponseWithRoles(User user, UUID businessId) {
