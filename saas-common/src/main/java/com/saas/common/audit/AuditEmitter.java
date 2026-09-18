@@ -25,7 +25,7 @@ import java.util.UUID;
  *
  * - Se sella el actor automaticamente desde el JWT (SecurityContext).
  * - Calcula los campos cambiados (diff de primer nivel) en UPDATE/TOGGLE.
- * - El payload es auto-contenido (before/after/actor): el audit-service no
+ * - El payload es auto-contenido (before/after/actor): el events-service no
  *   necesita llamar a nadie mas.
  *
  * Solo se activa donde existe un {@link OutboxPublisher} (servicios con outbox).

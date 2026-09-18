@@ -56,5 +56,13 @@ public final class EventTypes {
     /** Prefijo usado por el relay para enrutar al topic de auditoria. */
     public static final String AUDIT_PREFIX = "audit.";
 
+    /**
+     * Peticion de notificacion. Payload:
+     *   { "notificationCode": "...", "to": ["..."], "data": { "PARAM": "valor" } }
+     * Lo consume events-service, que NO conoce ningun dominio: recibe, resuelve
+     * y envia. Por eso anadir una notificacion nueva no toca su codigo.
+     */
+    public static final String NOTIFICATION_REQUESTED = "notification.requested";
+
     private EventTypes(){}
 }

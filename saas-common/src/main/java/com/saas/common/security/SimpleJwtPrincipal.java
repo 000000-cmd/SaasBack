@@ -19,4 +19,6 @@ public class SimpleJwtPrincipal implements IUserPrincipal {
     private final UUID userId;
     private final String username;
     private final Set<String> roles;
+    /** Del claim {@code businessId}. Null en el administrador del sistema. */
+    private final UUID businessId;
 }
