@@ -15,6 +15,10 @@ import org.springframework.context.annotation.Primary;
  * gateway no reescribe; pasa el path tal cual y Spring Boot lo despoja al
  * matchear los controllers.
  *
+ * Excepción: {@code events-service} no tiene context-path y sirve dos prefijos
+ * publicos ({@code /audit} y {@code /notification}), así que son sus
+ * controladores los que ponen el prefijo.
+ *
  *   POST /auth/login              -> auth-service     (rate-limit estricto, key=IP)
  *   /auth/**                       -> auth-service     (rate-limit normal, key=user)
  *   /system/**                     -> system-service   (rate-limit normal, key=user)
@@ -42,8 +46,8 @@ public class RouteConfig {
     @Value("${saas.gateway.services.business-uri:lb://business-service}")
     private String businessUri;
 
-    @Value("${saas.gateway.services.audit-uri:lb://audit-service}")
-    private String auditUri;
+    @Value("${saas.gateway.services.events-uri:lb://events-service}")
+    private String eventsUri;
 
     @Value("${saas.gateway.services.thirdparty-uri:lb://thirdparty-service}")
     private String thirdpartyUri;
@@ -124,7 +128,13 @@ public class RouteConfig {
                         .filters(f -> f.requestRateLimiter(c -> c
                                 .setRateLimiter(defaultRateLimiter)
                                 .setKeyResolver(userKeyResolver)))
-                        .uri(auditUri))
+                        .uri(eventsUri))
+                .route("notification", r -> r
+                        .path("/notification/**")
+                        .filters(f -> f.requestRateLimiter(c -> c
+                                .setRateLimiter(defaultRateLimiter)
+                                .setKeyResolver(userKeyResolver)))
+                        .uri(eventsUri))
                 .route("thirdparty", r -> r
                         .path("/thirdparty/**")
                         .filters(f -> f.requestRateLimiter(c -> c

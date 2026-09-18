@@ -20,6 +20,9 @@ public class RouteValidator {
             "/auth/exists",
             "/business/public",
             "/system/public",
+            // Descarga de la factura de un cliente por su enlace. No hay sesion:
+            // el enlace llega por SMS a alguien que no es usuario del sistema.
+            "/finance/public",
             "/actuator",
             "/api/info",
             "/api/version"

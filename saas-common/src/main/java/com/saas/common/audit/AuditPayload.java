@@ -13,7 +13,7 @@ import java.util.UUID;
  * Payload del evento dedicado de auditoria ({@code audit.recorded}).
  *
  * Es auto-contenido: lleva el actor (resuelto del JWT) y el estado before/after
- * para que el audit-service no dependa de otros servicios. El relay lo enruta
+ * para que el events-service no dependa de otros servicios. El relay lo enruta
  * al topic {@code audit.events}.
  */
 @Data

@@ -62,7 +62,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 List<String> rolesList = c.get("roles", List.class);
                 Set<String> roles = rolesList == null ? Set.of() : Set.copyOf(rolesList);
 
-                SimpleJwtPrincipal principal = new SimpleJwtPrincipal(userId, username, roles);
+                // El negocio viaja FIRMADO en el token. Es lo que permite
+                // dejar de creerse el que llega por parametro o por header.
+                String bizClaim = c.get("businessId", String.class);
+                UUID businessId = null;
+                if (bizClaim != null && !bizClaim.isBlank()) {
+                    try {
+                        businessId = UUID.fromString(bizClaim.trim());
+                    } catch (IllegalArgumentException ignored) {
+                        // Claim corrupto: se trata como si no viniera. Nunca se
+                        // acepta a medias.
+                    }
+                }
+
+                SimpleJwtPrincipal principal =
+                        new SimpleJwtPrincipal(userId, username, roles, businessId);
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
                                 principal, null,
