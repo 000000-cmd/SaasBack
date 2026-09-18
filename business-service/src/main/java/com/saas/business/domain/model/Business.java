@@ -21,6 +21,13 @@ public class Business extends BaseDomain implements ITenantOwned {
     private String primaryColor;
     private String secondaryColor;
 
+    /**
+     * Zona horaria del negocio. La agenda guarda SIEMPRE UTC y usa esto para
+     * presentarla; tambien la necesitan los cortes de nomina y los informes.
+     */
+    @Builder.Default
+    private String timeZone = "America/Bogota";
+
     /** La empresa ES el tenant: su propio Id es el businessId. */
     @Override
     public UUID getBusinessId() { return getId(); }

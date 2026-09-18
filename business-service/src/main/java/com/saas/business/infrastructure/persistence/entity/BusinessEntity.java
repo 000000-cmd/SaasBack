@@ -48,4 +48,7 @@ public class BusinessEntity extends BaseEntity {
 
     @Column(name = "SecondaryColor", length = 20)
     private String secondaryColor;
+
+    @Column(name = "TimeZone", length = 64, nullable = false)
+    private String timeZone = "America/Bogota";
 }

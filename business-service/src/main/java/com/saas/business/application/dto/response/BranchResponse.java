@@ -5,7 +5,8 @@ import java.util.UUID;
 
 public record BranchResponse(
         UUID id, UUID businessId, UUID branchTypeId, String name, String code,
-        UUID municipalityId, UUID neighborhoodId, String addressLine, String phone,
+        UUID municipalityId, UUID neighborhoodId, String addressLine,
+        java.math.BigDecimal latitude, java.math.BigDecimal longitude, String phone,
         Boolean isMain, UUID statusId,
         Boolean enabled, Boolean visible, LocalDateTime createdDate, LocalDateTime auditDate
 ) {}

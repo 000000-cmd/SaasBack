@@ -25,6 +25,8 @@ public class BranchService extends GenericCrudService<Branch, UUID> implements I
         if (incoming.getMunicipalityId() != null) existing.setMunicipalityId(incoming.getMunicipalityId());
         if (incoming.getNeighborhoodId() != null) existing.setNeighborhoodId(incoming.getNeighborhoodId());
         if (incoming.getAddressLine() != null)   existing.setAddressLine(incoming.getAddressLine());
+        if (incoming.getLatitude() != null)      existing.setLatitude(incoming.getLatitude());
+        if (incoming.getLongitude() != null)     existing.setLongitude(incoming.getLongitude());
         if (incoming.getPhone() != null)         existing.setPhone(incoming.getPhone());
         if (incoming.getIsMain() != null)        existing.setIsMain(incoming.getIsMain());
         if (incoming.getStatusId() != null)      existing.setStatusId(incoming.getStatusId());
