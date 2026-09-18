@@ -6,5 +6,5 @@ import java.util.UUID;
 
 public record BusinessCompensationResponse(
         UUID id, UUID businessId, String compensationType, BigDecimal compensationValue, BigDecimal salaryBase,
-        LocalDateTime validFrom, LocalDateTime validTo, Boolean enabled
+        String payrollFrequency, LocalDateTime validFrom, LocalDateTime validTo, Boolean enabled
 ) {}

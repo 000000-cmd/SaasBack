@@ -13,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  *
  * <p>Servicio financiero de la plataforma. Gobierna su propio esquema MySQL
  * dedicado ({@code saas_finance}) mediante Flyway al arranque, igual que
- * auth-service y audit-service gobiernan los suyos.</p>
+ * auth-service y events-service gobiernan los suyos.</p>
  *
  * <p>Es productor de eventos de dominio: escribe en {@code outbox_event}
  * (mismo esquema) dentro de la transacción del cambio y el

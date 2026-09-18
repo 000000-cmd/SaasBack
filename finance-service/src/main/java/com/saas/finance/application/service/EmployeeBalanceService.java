@@ -65,6 +65,24 @@ public class EmployeeBalanceService implements IEmployeeBalanceUseCase {
         return repo.findByEmployeeId(employeeId).map(this::recompute);
     }
 
+    /**
+     * Abono al saldo (liquidacion de servicios o sueldo base del periodo): el
+     * empleado GANA. Sube el devengado y por tanto su por cobrar.
+     */
+    @Override
+    @Transactional
+    public EmployeeBalance registerCredit(UUID employeeId, BigDecimal amount) {
+        EmployeeBalance b = repo.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Saldo", "employeeId", employeeId));
+        BigDecimal accrued = b.getAmountAccrued() == null ? BigDecimal.ZERO : b.getAmountAccrued();
+        b.setAmountAccrued(accrued.add(amount));
+        return recompute(b);
+    }
+
+    /**
+     * Pago al empleado (dispersion de nomina): el empleado COBRA. Sube lo pagado
+     * y por tanto baja su por cobrar.
+     */
     @Override
     @Transactional
     public EmployeeBalance registerPayment(UUID employeeId, BigDecimal amount) {
@@ -75,11 +93,35 @@ public class EmployeeBalanceService implements IEmployeeBalanceUseCase {
         return recompute(b);
     }
 
+    /**
+     * Deshace un pago. Lo pagado baja; el por cobrar vuelve a subir solo.
+     *
+     * <p>No se deja por debajo de cero: un acumulado negativo no significa nada
+     * y contamina todos los informes que salgan de el. Si el importe a deshacer
+     * fuera mayor que lo pagado, algo mas esta mal — se registra y se corta en
+     * cero, que es el peor dato posible pero no uno imposible.</p>
+     */
+    @Override
+    @Transactional
+    public EmployeeBalance registerPaymentReversal(UUID employeeId, BigDecimal amount) {
+        EmployeeBalance b = repo.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Saldo", "employeeId", employeeId));
+        BigDecimal paid = b.getAmountPaid() == null ? BigDecimal.ZERO : b.getAmountPaid();
+        BigDecimal nuevo = paid.subtract(amount);
+        if (nuevo.compareTo(BigDecimal.ZERO) < 0) {
+            log.warn("Anulacion de {} deja lo pagado del empleado {} en negativo ({}); se corta en cero",
+                    amount, employeeId, nuevo);
+            nuevo = BigDecimal.ZERO;
+        }
+        b.setAmountPaid(nuevo);
+        return recompute(b);
+    }
+
     /** Recalcula montos, persiste y publica a ES. */
     private EmployeeBalance recompute(EmployeeBalance b) {
-        // TODO(finance): cuando exista el modulo de servicios prestados/pagos,
-        // amountAccrued = suma(servicios del empleado x compensacion efectiva) y
-        // amountPaid = suma(pagos registrados). Por ahora 0 (base lista).
+        // Los acumulados los mueven los MOVIMIENTOS (employee_settlement), que es
+        // la fuente de verdad auditable: abonos suben el devengado, la nomina sube
+        // lo pagado. Aqui solo se recalcula el derivado y se publica.
         BigDecimal accrued = b.getAmountAccrued() == null ? BigDecimal.ZERO : b.getAmountAccrued();
         BigDecimal paid = b.getAmountPaid() == null ? BigDecimal.ZERO : b.getAmountPaid();
         b.setAmountAccrued(accrued);

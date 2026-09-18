@@ -82,6 +82,17 @@
             <artifactId>mapstruct</artifactId>
             <version>${org.mapstruct.version}</version>
         </dependency>
+
+        <!--
+            PDFBox: el extracto de nomina que viaja adjunto al correo, cifrado
+            con el numero de documento del empleado. Se genera aqui porque aqui
+            estan los datos; events-service solo lo transporta y no lo abre.
+        -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.31</version>
+        </dependency>
     </dependencies>
 
     <build>

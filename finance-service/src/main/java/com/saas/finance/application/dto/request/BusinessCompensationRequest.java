@@ -9,5 +9,7 @@ public record BusinessCompensationRequest(
         @NotNull UUID businessId,
         @NotBlank String compensationType,
         @NotNull BigDecimal compensationValue,
-        BigDecimal salaryBase
+        BigDecimal salaryBase,
+        /** MONTHLY|BIWEEKLY|WEEKLY. Sin valor explicito se asume mensual. */
+        String payrollFrequency
 ) {}

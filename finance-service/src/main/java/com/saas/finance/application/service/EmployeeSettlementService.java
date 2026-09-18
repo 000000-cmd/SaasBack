@@ -4,9 +4,12 @@ import com.saas.common.exception.BusinessException;
 import com.saas.common.exception.ResourceNotFoundException;
 import com.saas.finance.domain.model.EmployeeBalance;
 import com.saas.finance.domain.model.EmployeeSettlement;
+import com.saas.finance.domain.model.MovementType;
+import com.saas.finance.domain.model.ServiceCharge;
 import com.saas.finance.domain.port.in.IEmployeeBalanceUseCase;
 import com.saas.finance.domain.port.in.IEmployeeSettlementUseCase;
 import com.saas.finance.domain.port.out.IEmployeeSettlementRepositoryPort;
+import com.saas.finance.domain.port.out.IServiceChargeRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,13 +21,16 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Liquidacion de comisiones al empleado. Confirmar mueve dinero: registra el
- * movimiento (auditoria) y suma al pagado del saldo, bajando el por cobrar.
- * Es IRREVERSIBLE, por eso valida el monto contra el saldo real antes de tocar
- * nada y ambas escrituras van en la misma transaccion.
+ * Liquidacion de servicios: el ABONO al saldo del empleado.
  *
- * <p>El desglose servicio a servicio llegara con el modulo de citas; hoy se
- * liquida contra el saldo por cobrar acumulado.</p>
+ * <p>Liquidar NO es pagar. Liquidar reconoce el trabajo aprobado y lo suma al
+ * saldo a favor del colaborador; consignarle esa plata es la dispersion de
+ * nomina ({@link PayrollService}). Mezclar las dos era lo que hacia que
+ * "liquidar" pareciera que ya se habia pagado.</p>
+ *
+ * <p>El monto es la SUMA DE LO APROBADO servicio a servicio, y cada cargo queda
+ * sellado con el id de la liquidacion que lo pago: sin eso, "por que me pagaste
+ * esto" no tiene respuesta en tres meses.</p>
  */
 @Slf4j
 @Service
@@ -32,39 +38,55 @@ import java.util.UUID;
 public class EmployeeSettlementService implements IEmployeeSettlementUseCase {
 
     private final IEmployeeSettlementRepositoryPort repo;
+    private final IServiceChargeRepositoryPort charges;
     private final IEmployeeBalanceUseCase balances;
+    private final FinanceNotifier notifier;
 
     @Override
     @Transactional
-    public EmployeeSettlement settle(UUID employeeId, BigDecimal amount, String note) {
+    public EmployeeSettlement settle(UUID employeeId, String note) {
         EmployeeBalance balance = balances.findByEmployee(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Saldo", "employeeId", employeeId));
 
-        BigDecimal pending = balance.getBalance() == null ? BigDecimal.ZERO : balance.getBalance();
-        // Sin monto explicito se liquida todo lo pendiente (es el caso del boton
-        // "Liberar comision" de la pantalla, que paga el saldo completo).
-        BigDecimal toSettle = amount == null ? pending : amount;
+        List<ServiceCharge> settlable = charges.findSettlable(employeeId);
+        if (settlable.isEmpty()) {
+            throw new BusinessException("No hay servicios aprobados pendientes de liquidar");
+        }
 
-        if (toSettle.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException("El monto a liquidar debe ser mayor que cero");
+        BigDecimal total = settlable.stream()
+                .map(c -> c.getNetAmount() == null ? BigDecimal.ZERO : c.getNetAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (total.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("El total aprobado debe ser mayor que cero");
         }
-        if (toSettle.compareTo(pending) > 0) {
-            throw new BusinessException("El monto a liquidar supera el saldo por cobrar del empleado");
-        }
+
+        BigDecimal pending = balance.getBalance() == null ? BigDecimal.ZERO : balance.getBalance();
 
         EmployeeSettlement settlement = repo.save(EmployeeSettlement.builder()
                 .businessId(balance.getBusinessId())
                 .branchId(balance.getBranchId())
                 .employeeId(employeeId)
-                .amount(toSettle)
+                .amount(total)
                 .balanceBefore(pending)
                 .currency(balance.getCurrency())
                 .settledAt(LocalDateTime.now())
                 .note(note)
+                .movementType(MovementType.COMMISSION)
+                .commissionAmount(total)
+                .baseSalaryAmount(BigDecimal.ZERO)
                 .build());
 
-        balances.registerPayment(employeeId, toSettle);
-        log.info("Liquidacion confirmada employeeId={} monto={} saldoPrevio={}", employeeId, toSettle, pending);
+        // Sellar los cargos ANTES de mover el saldo: si algo falla despues, la
+        // transaccion revierte ambos y no queda un abono sin respaldo.
+        for (ServiceCharge c : settlable) {
+            c.setSettlementId(settlement.getId());
+            charges.update(c);
+        }
+
+        EmployeeBalance after = balances.registerCredit(employeeId, total);
+        log.info("Liquidacion abonada employeeId={} servicios={} monto={}", employeeId, settlable.size(), total);
+
+        notifier.settlementConfirmed(settlement, settlable.size(), after);
         return settlement;
     }
 
@@ -73,4 +95,13 @@ public class EmployeeSettlementService implements IEmployeeSettlementUseCase {
 
     @Override @Transactional(readOnly = true)
     public List<EmployeeSettlement> historyByBusiness(UUID businessId) { return repo.findByBusinessId(businessId); }
+
+    @Override @Transactional(readOnly = true)
+    public List<EmployeeSettlement> byPayrollRun(UUID payrollRunId) { return repo.findByPayrollRunId(payrollRunId); }
+
+    @Override @Transactional(readOnly = true)
+    public EmployeeSettlement byId(UUID id) {
+        return repo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Movimiento", "id", id));
+    }
 }

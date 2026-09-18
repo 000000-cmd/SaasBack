@@ -16,6 +16,10 @@ public class BusinessCompensation extends BaseDomain {
     private BigDecimal compensationValue;
     // Solo tipos hibridos (salario + %): salario base que acompana al %. Null en el resto.
     private BigDecimal salaryBase;
+    // Cada cuanto dispersa nomina la empresa (MONTHLY|BIWEEKLY|WEEKLY). Vive a
+    // nivel de NEGOCIO porque es una politica de la empresa, no de una persona:
+    // de aqui sale en cuantas partes se fracciona el sueldo base al abonarse.
+    private String payrollFrequency;
     private LocalDateTime validFrom;
     private LocalDateTime validTo;
 }
