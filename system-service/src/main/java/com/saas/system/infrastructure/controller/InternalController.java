@@ -43,6 +43,19 @@ public class InternalController {
         return rolePermUseCase.getPermissionCodesByRoleId(roleId);
     }
 
+    /**
+     * Permisos efectivos de unos roles, por CODIGO.
+     *
+     * <p>Lo llaman los servicios que necesitan comprobar un permiso y solo
+     * tienen los roles del token, que es lo que el token lleva. Sin esto, cada
+     * servicio acabaria decidiendo por rol —"si es dueno, puede"— que es
+     * justo la comprobacion generica que hay que evitar.</p>
+     */
+    @PostMapping("/permissions/by-role-codes")
+    public Set<String> getPermissionCodesByRoleCodes(@RequestBody Set<String> roleCodes) {
+        return rolePermUseCase.getPermissionCodesByRoleCodes(roleCodes);
+    }
+
     // Los roles ya no se reindexan: no tienen indice en Elastic.
 
     // ==================== LOCATION (reindex) ====================
