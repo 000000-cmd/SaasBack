@@ -298,7 +298,7 @@ ya incluyen `*.localhost:4200`, `localhost:4201` y `localhost:3000` (APK web).
 # Login
 TOKEN=$(curl -s -X POST http://localhost:8080/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"usernameOrEmail":"admin","password":"Admin123!"}' \
+  -d '{"usernameOrEmail":"admin","password":"<BOOTSTRAP_ADMIN_PASSWORD del .env>"}' \
   | jq -r '.data.tokens.accessToken')
 
 # Ver mis menús
@@ -317,7 +317,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/jso
 
 ```bash
 # ─── BASE DE DATOS ─────────────────────
-MYSQL_ROOT_PASSWORD=rootpassword
+MYSQL_ROOT_PASSWORD=<la tuya, del .env>
 MYSQL_DATABASE=saas_db
 
 # ─── ZONA HORARIA ──────────────────────
@@ -1090,7 +1090,7 @@ Esperado: `204 No Content` con headers `Access-Control-Allow-*`.
 ```
 Username:  admin
 Email:     admin@saas.local
-Password:  Admin123!
+Password:  el BOOTSTRAP_ADMIN_PASSWORD de tu .env
 Rol:       ADMIN
 ```
 
@@ -1351,7 +1351,7 @@ curl http://localhost:9200/_cat/aliases?v
 ### Reset BD sin tocar containers
 
 ```bash
-docker compose exec mysql mysql -u root -prootpassword \
+docker compose exec mysql mysql -u root -p"$MYSQL_ROOT_PASSWORD" \
   -e "DROP DATABASE saas_db; CREATE DATABASE saas_db;"
 docker compose restart auth-service
 ```
@@ -1360,11 +1360,11 @@ docker compose restart auth-service
 
 ```bash
 # Eventos pendientes
-docker exec saas-mysql mysql -uroot -prootpassword saas_db -e \
+docker exec saas-mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" saas_db -e \
   "SELECT EventType, Status, Retries FROM outbox_event ORDER BY CreatedAt DESC LIMIT 10"
 
 # Eventos fallidos
-docker exec saas-mysql mysql -uroot -prootpassword saas_db -e \
+docker exec saas-mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" saas_db -e \
   "SELECT * FROM outbox_event WHERE Status='FAILED' LIMIT 10"
 ```
 

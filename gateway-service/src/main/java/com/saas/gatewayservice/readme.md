@@ -61,7 +61,7 @@ Los microservicios pueden leer estos headers para obtener información del usuar
 ### Variables de Entorno
 ```properties
 # JWT
-jwt.secret=SuperClaveUltraSeguraDe32Caracteres1234
+jwt.secret=${JWT_SECRET}   # minimo 32 caracteres, del entorno
 
 # Eureka
 eureka.client.service-url.defaultZone=http://discovery-service:8761/eureka/

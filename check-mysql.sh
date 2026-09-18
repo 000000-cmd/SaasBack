@@ -17,7 +17,7 @@ echo "✅ Contenedor MySQL está corriendo"
 # Verificar conexión
 echo ""
 echo "🔐 Probando conexión con usuario root..."
-docker exec saas-mysql mysql -uroot -prootpassword -e "SELECT 'Conexión exitosa' AS status;"
+docker exec saas-mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 'Conexión exitosa' AS status;"
 
 if [ $? -eq 0 ]; then
     echo "✅ Conexión exitosa"
@@ -29,11 +29,11 @@ fi
 # Verificar base de datos
 echo ""
 echo "📊 Verificando bases de datos..."
-docker exec saas-mysql mysql -uroot -prootpassword -e "SHOW DATABASES;"
+docker exec saas-mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SHOW DATABASES;"
 
 echo ""
 echo "👥 Verificando usuarios..."
-docker exec saas-mysql mysql -uroot -prootpassword -e "SELECT User, Host FROM mysql.user;"
+docker exec saas-mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SELECT User, Host FROM mysql.user;"
 
 echo ""
 echo "✅ Verificación completada"

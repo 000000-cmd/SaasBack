@@ -338,6 +338,7 @@ services:
     restart: unless-stopped
     environment:
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      JWT_SECRET: ${JWT_SECRET}
       EUREKA_INSTANCE_HOSTNAME: discovery-service
       JAVA_OPTS: >-
         -Xms128m
@@ -378,6 +379,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      JWT_SECRET: ${JWT_SECRET}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -430,6 +433,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      JWT_SECRET: ${JWT_SECRET}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
       JAVA_OPTS: >-
         -Xms256m
@@ -477,6 +481,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      JWT_SECRET: ${JWT_SECRET}
       SAAS_DB_HOST: mysql
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -535,6 +540,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      JWT_SECRET: ${JWT_SECRET}
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -588,6 +594,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      JWT_SECRET: ${JWT_SECRET}
       # Este servicio vive en el esquema `personas`, no en el operativo.
       # La variable de entorno gana sobre el config-server, asi que el
       # cambio tiene que estar AQUI ademas de en sus properties.
@@ -642,6 +649,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      JWT_SECRET: ${JWT_SECRET}
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -709,6 +717,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      JWT_SECRET: ${JWT_SECRET}
       SAAS_DB_HOST: mysql
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -761,6 +770,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
+      JWT_SECRET: ${JWT_SECRET}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
       JAVA_OPTS: >-
         -Xms256m

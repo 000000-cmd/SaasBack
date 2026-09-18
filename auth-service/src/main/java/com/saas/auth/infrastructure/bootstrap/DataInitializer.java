@@ -46,7 +46,7 @@ public class DataInitializer {
                             IUserRoleRepositoryPort userRoleRepo,
                             @Value("${saas.bootstrap.admin.username:admin}") String adminUsername,
                             @Value("${saas.bootstrap.admin.email:admin@saas.local}") String adminEmail,
-                            @Value("${saas.bootstrap.admin.password:Admin123!}") String adminPassword,
+                            @Value("${saas.bootstrap.admin.password}") String adminPassword,
                             @Value("${saas.bootstrap.admin.first-name:Administrador}") String adminFirstName,
                             @Value("${saas.bootstrap.admin.last-name:Sistema}") String adminLastName) {
         this.userUseCase = userUseCase;
