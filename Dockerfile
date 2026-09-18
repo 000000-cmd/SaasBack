@@ -19,7 +19,7 @@ COPY auth-service/pom.xml auth-service/
 COPY system-service/pom.xml system-service/
 COPY search-service/pom.xml search-service/
 COPY business-service/pom.xml business-service/
-COPY audit-service/pom.xml audit-service/
+COPY events-service/pom.xml events-service/
 COPY thirdparty-service/pom.xml thirdparty-service/
 COPY finance-service/pom.xml finance-service/
 
@@ -45,7 +45,7 @@ COPY auth-service/ auth-service/
 COPY system-service/ system-service/
 COPY search-service/ search-service/
 COPY business-service/ business-service/
-COPY audit-service/ audit-service/
+COPY events-service/ events-service/
 COPY thirdparty-service/ thirdparty-service/
 COPY finance-service/ finance-service/
 
@@ -145,15 +145,15 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
 
 # ===========================================
-# STAGE 10: AUDIT SERVICE
+# STAGE 10: EVENTS SERVICE (auditoria + notificaciones)
 # ===========================================
-FROM base-runtime AS audit-service
-COPY --from=builder --chown=appuser:appgroup /app/audit-service/target/*.jar app.jar
+FROM base-runtime AS events-service
+COPY --from=builder --chown=appuser:appgroup /app/events-service/target/*.jar app.jar
 USER appuser
 EXPOSE 8087
 ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8087/audit/actuator/health || exit 1
+    CMD curl -f http://localhost:8087/actuator/health || exit 1
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
 
 # ===========================================

@@ -464,15 +464,15 @@ services:
         max-file: "5"
 
   # ===========================================
-  # CAPA 3: AUDIT SERVICE (consumidor de audit.events)
+  # CAPA 3: EVENTS SERVICE (auditoria + notificaciones)
   # ===========================================
-  audit-service:
+  events-service:
     build:
       context: .
       dockerfile: Dockerfile
-      target: audit-service
-    image: saas-audit:latest
-    container_name: saas-audit
+      target: events-service
+    image: saas-events:latest
+    container_name: saas-events
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
@@ -481,6 +481,12 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      # Salida de WhatsApp (Cloud API). Vacias = canal sin conectar: los avisos
+      # se redactan y quedan como NO_PROVIDER en la bitacora, que es la verdad.
+      # Van por entorno y no en la base: un token con permiso para escribir en
+      # nombre de la plataforma no puede vivir en una tabla que una pantalla lee.
+      SAAS_WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      SAAS_WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
       JAVA_OPTS: >-
         -Xms256m
         -Xmx512m
@@ -504,7 +510,7 @@ services:
       kafka-1:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8087/audit/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
       interval: 15s
       timeout: 10s
       retries: 15
@@ -582,7 +588,10 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888/
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+      # Este servicio vive en el esquema `personas`, no en el operativo.
+      # La variable de entorno gana sobre el config-server, asi que el
+      # cambio tiene que estar AQUI ademas de en sus properties.
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/personas?useSSL=false&serverTimezone=America/Bogota&allowPublicKeyRetrieval=true&cachePrepStmts=true&prepStmtCacheSize=250&useServerPrepStmts=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
@@ -637,6 +646,20 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-service:8761/eureka/
+      # Webhook de WhatsApp. El secreto de la app firma cada entrega y el
+      # token de verificacion es el del apreton de manos inicial de Meta.
+      # Sin el secreto el webhook RECHAZA todo: aceptar sin firmar seria
+      # dejar que cualquiera inyecte mensajes en la agenda.
+      SAAS_WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      # Firma los enlaces opacos a una cita. Sin el, el aviso sale sin
+      # enlace y el cliente entra tecleando su codigo: nunca se emite
+      # un enlace que cualquiera pueda fabricar.
+      SAAS_BOOKING_LINK_SECRET: ${BOOKING_LINK_SECRET:-}
+      # Llave con la que se cifran los secretos guardados (hoy: el token
+      # de WhatsApp de cada negocio). Vive AQUI y no en la base: cifrar
+      # guardando la llave al lado no protege de nada.
+      SAAS_SECRETS_KEY: ${SECRETS_KEY:-}
+      SAAS_WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
       JAVA_OPTS: >-
         -Xms256m
         -Xmx512m

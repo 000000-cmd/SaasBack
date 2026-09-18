@@ -29,7 +29,7 @@
         <module>system-service</module>
         <module>search-service</module>
         <module>business-service</module>
-        <module>audit-service</module>
+        <module>events-service</module>
         <module>thirdparty-service</module>
         <module>finance-service</module>
     </modules>

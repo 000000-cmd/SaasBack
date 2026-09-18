@@ -121,11 +121,11 @@ Plataforma SaaS de gestión multi-negocio (fashion, peluquería, etc.) construid
 | **system-service** | 8083 | Roles, permisos, menús, listas, constantes | Spring Boot + JPA + Outbox |
 | **search-service** | 8085 | Read-model en ES. Consumer Kafka + endpoints `/search/*` | Spring Boot + Spring Data ES + Kafka |
 | **business-service** | 8086 | Empresas, sedes, empleados, propietarios, clientes, horarios/turnos, servicios, compensación | Spring Boot + JPA + Outbox |
-| **audit-service** | 8087 | Consumidor de `audit.events`. Persiste `audit_log` en esquema dedicado `saas_audit` | Spring Boot + JPA + Kafka |
+| **events-service** | 8087 | Registra la auditoría y envía notificaciones. Consumidor de `audit.events`. Persiste `audit_log` en esquema dedicado `saas_events` | Spring Boot + JPA + Kafka |
 | **thirdparty-service** | 8099 | Terceros (persona natural), contactos y direcciones | Spring Boot + JPA + Outbox |
 | **discovery-service** | 8761 | Eureka — registro de servicios | Spring Cloud Eureka |
 | **config-server** | 8888 | Sirve `saas-config-repo/*.properties` | Spring Cloud Config |
-| **mysql** | 3306 | BD `saas_db` (auth, system, business, thirdparty) + `saas_audit` (auditoría) | MySQL 8.4 |
+| **mysql** | 3306 | BD `saas_db` (auth, system, business, thirdparty) + `saas_events` (auditoría y notificaciones) | MySQL 8.4 |
 | **redis** | 6379 | Cache, JWT blacklist, rate-limit, dedup eventos | Redis 7.4 |
 | **kafka-1** | 9094 | Kafka (KRaft, 1 broker en dev) | Confluent Kafka 7.8 |
 | **es-01** | 9200 | Elasticsearch (single-node en dev, cluster en prod) | Elasticsearch 8.17 |
@@ -245,7 +245,7 @@ docker compose up -d mysql redis kafka-1 es-01
 
 # 2. En IntelliJ, arrancar los microservicios en este orden (profile=local):
 #    config-server → discovery-service → auth-service → system-service
-#    → thirdparty-service → business-service → search-service → audit-service → gateway-service
+#    → thirdparty-service → business-service → search-service → events-service → gateway-service
 ```
 
 > **Profile**: cada micro arranca con `local` (es el `spring.profiles.default`). En IntelliJ: Run Config → Active profiles: `local`, o VM option `-Dspring.profiles.active=local`.
