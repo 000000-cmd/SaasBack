@@ -9,7 +9,7 @@ Este script simula ese devengado para dejar **liquidaciones pendientes**.
 Con el stack levantado (`docker compose up -d`), un solo comando:
 
 ```bash
-docker compose exec -T mysql mysql -uroot -prootpassword saas_db < scripts/seed-liquidaciones.sql
+docker compose exec -T mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" saas_db < scripts/seed-liquidaciones.sql
 ```
 
 Eso es todo. Al terminar imprime una tabla con cada negocio, **el usuario del
